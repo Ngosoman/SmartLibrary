@@ -6,7 +6,7 @@ import os
 BOOKS_FILE = "books.csv"
 
 # ------------------- Add Book -------------------
-def add_book():
+def add_book_window():
     add_window = tk.Toplevel()
     add_window.title("Add New Book")
     add_window.geometry("400x400")

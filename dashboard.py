@@ -7,15 +7,14 @@ from reports import generate_report
 def open_dashboard():
     dashboard = tk.Tk()
     dashboard.title("Library Management System")
-    dashboard.geometry("500x500")
+    dashboard.geometry("500x600")
 
     tk.Label(dashboard, text="📚 Library Management System", font=("Helvetica", 16, "bold")).pack(pady=20)
 
     # BOOK FUNCTIONS
     tk.Button(dashboard, text="➕ Add Book", width=30, command=books.add_book_window).pack(pady=5)
-    tk.Button(dashboard, text="📚 View Books", width=30, command=books.view_books_window).pack(pady=5)
-    tk.Button(dashboard, text="✏️ Edit Book", width=30, command=books.edit_book_window).pack(pady=5)
-    tk.Button(dashboard, text="❌ Delete Book", width=30, command=books.delete_book_window).pack(pady=5)
+    tk.Button(dashboard, text="📚 View Books", width=30, command=books.view_books).pack(pady=5)
+    # Removed Edit/Delete — handled inside view_books()
 
     # BORROW FUNCTIONS
     tk.Button(dashboard, text="👤 Record Borrowing", width=30, command=borrow.record_borrowing_window).pack(pady=5)
@@ -30,7 +29,3 @@ def open_dashboard():
     tk.Button(dashboard, text="🚪 Logout", width=30, command=dashboard.destroy).pack(pady=20)
 
     dashboard.mainloop()
-
-# Optionally remove this if unused
-# def dashboard_window():
-#     ...
