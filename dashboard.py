@@ -20,7 +20,8 @@ def dashboard_window():
     tk.Button(dashboard, text="Record Borrowing", width=25, command=borrow.record_borrowing_window).pack(pady=5)
 
     # TODO: Future features
-    tk.Button(dashboard, text="Return Book (Coming Soon)", width=25, state="disabled").pack(pady=5)
+    tk.Button(dashboard, text="Return Book", width=25, command=borrow.return_book_window).pack(pady=5)
+
     tk.Button(dashboard, text="View Borrowed Books (Coming Soon)", width=25, state="disabled").pack(pady=5)
 
     # Exit
