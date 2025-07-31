@@ -119,3 +119,29 @@ def return_book_window():
         messagebox.showinfo("Success", "Book marked as returned.")
 
     tk.Button(return_win, text="✅ Mark as Returned", command=return_selected_book).pack(pady=10)
+
+def view_borrowed_books_window():
+    view_win = tk.Toplevel()
+    view_win.title("All Borrowed Books")
+    view_win.geometry("800x400")
+
+    tk.Label(view_win, text="📖 All Borrowed Books", font=("Helvetica", 14, "bold")).pack(pady=10)
+
+    tree = ttk.Treeview(view_win, columns=("ID", "Student", "Book", "Borrowed On", "Return By", "Status"), show="headings")
+    tree.heading("ID", text="ID")
+    tree.heading("Student", text="Student Name")
+    tree.heading("Book", text="Book Title")
+    tree.heading("Borrowed On", text="Borrowed On")
+    tree.heading("Return By", text="Return By")
+    tree.heading("Status", text="Status")
+    tree.pack(pady=10, fill="both", expand=True)
+
+    conn = sqlite3.connect("library.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, student_name, book_title, borrow_date, return_date, returned FROM borrow")
+    rows = cursor.fetchall()
+    conn.close()
+
+    for row in rows:
+        status = "✅ Returned" if row[5] == 1 else "❌ Pending"
+        tree.insert("", tk.END, values=(row[0], row[1], row[2], row[3], row[4], status))
