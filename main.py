@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-import subprocess
-import os
+from dashboard import open_dashboard
 
 # Function to handle login
 def login():
@@ -10,13 +9,8 @@ def login():
 
     if username == "Admin" and password == "AdminLibrary":
         messagebox.showinfo("Login Success", "Welcome to the School Library System!")
-        root.destroy()  # Close the login window
-
-        # Run the dashboard.py script
-        if os.path.exists("dashboard.py"):
-            subprocess.run(["python", "dashboard.py"])
-        else:
-            messagebox.showerror("Error", "dashboard.py not found.")
+        root.destroy()
+        open_dashboard()  # Directly opens the dashboard GUI
     else:
         messagebox.showerror("Login Failed", "Invalid username or password.")
 
