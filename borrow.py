@@ -74,3 +74,48 @@ def record_borrowing_window():
     entry_due_date.pack()
 
     tk.Button(borrow_window, text="Submit", command=submit_borrow).pack(pady=10)
+
+def return_book_window():
+    return_win = tk.Toplevel()
+    return_win.title("Return Book")
+    return_win.geometry("700x400")
+
+    tk.Label(return_win, text="📚 Return Book", font=("Helvetica", 14, "bold")).pack(pady=10)
+
+    tree = ttk.Treeview(return_win, columns=("ID", "Student", "Book", "Borrowed On", "Return By"), show="headings")
+    tree.heading("ID", text="ID")
+    tree.heading("Student", text="Student Name")
+    tree.heading("Book", text="Book Title")
+    tree.heading("Borrowed On", text="Borrowed On")
+    tree.heading("Return By", text="Return By")
+    tree.pack(pady=10, fill="both", expand=True)
+
+    # Load borrowed books from database
+    conn = sqlite3.connect("library.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, student_name, book_title, borrow_date, return_date FROM borrow WHERE returned = 0")
+    rows = cursor.fetchall()
+    conn.close()
+
+    for row in rows:
+        tree.insert("", tk.END, values=row)
+
+    def return_selected_book():
+        selected = tree.focus()
+        if not selected:
+            messagebox.showwarning("No selection", "Please select a book to return.")
+            return
+
+        item = tree.item(selected)
+        borrow_id = item["values"][0]
+
+        conn = sqlite3.connect("library.db")
+        cursor = conn.cursor()
+        cursor.execute("UPDATE borrow SET returned = 1 WHERE id = ?", (borrow_id,))
+        conn.commit()
+        conn.close()
+
+        tree.delete(selected)
+        messagebox.showinfo("Success", "Book marked as returned.")
+
+    tk.Button(return_win, text="✅ Mark as Returned", command=return_selected_book).pack(pady=10)
