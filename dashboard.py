@@ -21,8 +21,9 @@ def dashboard_window():
 
     # TODO: Future features
     tk.Button(dashboard, text="Return Book", width=25, command=borrow.return_book_window).pack(pady=5)
+    tk.Button(dashboard, text="View All Borrowed Books", width=25, command=borrow.view_borrowed_books_window).pack(pady=5)
+    tk.Button(dashboard, text="🔔 Check Due Books", width=25, command=borrow.check_due_books).pack(pady=5)
 
-    tk.Button(dashboard, text="View Borrowed Books (Coming Soon)", width=25, state="disabled").pack(pady=5)
 
     # Exit
     tk.Button(dashboard, text="Logout", width=25, command=dashboard.destroy).pack(pady=20)
