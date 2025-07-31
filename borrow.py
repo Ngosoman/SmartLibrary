@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import messagebox
 import csv
 from datetime import datetime
+from datetime import datetime
 
 def record_borrowing_window():
     def submit_borrow():
@@ -145,3 +146,23 @@ def view_borrowed_books_window():
     for row in rows:
         status = "✅ Returned" if row[5] == 1 else "❌ Pending"
         tree.insert("", tk.END, values=(row[0], row[1], row[2], row[3], row[4], status))
+
+def check_due_books():
+    conn = sqlite3.connect("library.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT student_name, book_title, return_date FROM borrow WHERE returned = 0")
+    today = datetime.today().date()
+    alerts = []
+
+    for student, book, return_date in cursor.fetchall():
+        if return_date:
+            due_date = datetime.strptime(return_date, "%Y-%m-%d").date()
+            if due_date < today:
+                alerts.append(f"📛 {student} - {book} is overdue since {return_date}")
+
+    conn.close()
+
+    if alerts:
+        messagebox.showwarning("Overdue Books", "\n".join(alerts))
+    else:
+        messagebox.showinfo("Due Books", "No overdue books today.")
