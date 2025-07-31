@@ -1,5 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox
+import books  # Make sure books.py exists and is updated
+import borrow  # Placeholder: create borrow.py with record_borrowing function
+# You can also create returns.py and reports.py later if needed
 
 def open_library_dashboard():
     dashboard = tk.Tk()
@@ -9,28 +12,18 @@ def open_library_dashboard():
     tk.Label(dashboard, text="📚 Library Management System", font=("Helvetica", 16, "bold")).pack(pady=20)
 
     # Button Options
-    tk.Button(dashboard, text="➕ Add Book", width=25, command=add_book).pack(pady=5)
-    tk.Button(dashboard, text="📚 View All Books", width=25, command=view_books).pack(pady=5)
-    tk.Button(dashboard, text="👤 Record Borrowing", width=25, command=record_borrowing).pack(pady=5)
+    tk.Button(dashboard, text="➕ Add Book", width=25, command=books.add_book).pack(pady=5)
+    tk.Button(dashboard, text="📚 View All Books", width=25, command=books.view_books).pack(pady=5)
+    tk.Button(dashboard, text="👤 Record Borrowing", width=25, command=borrow.record_borrowing).pack(pady=5)
     tk.Button(dashboard, text="📆 Upcoming Returns", width=25, command=upcoming_returns).pack(pady=5)
     tk.Button(dashboard, text="🧾 Generate Report", width=25, command=generate_report).pack(pady=5)
     tk.Button(dashboard, text="🚪 Logout", width=25, command=dashboard.destroy).pack(pady=20)
 
     dashboard.mainloop()
 
-# Placeholder functions (we'll implement these next)
-def add_book():
-    messagebox.showinfo("Add Book", "Function to add a new book.")
-
-def view_books():
-    messagebox.showinfo("View Books", "Function to view all books.")
-
-def record_borrowing():
-    messagebox.showinfo("Borrow Book", "Function to record borrowing.")
-
+# Placeholder implementations for future features
 def upcoming_returns():
-    messagebox.showinfo("Upcoming Returns", "Function to check return dates.")
+    messagebox.showinfo("Upcoming Returns", "This feature will show upcoming book return deadlines.")
 
 def generate_report():
-    messagebox.showinfo("Reports", "Function to generate reports.")
-
+    messagebox.showinfo("Generate Report", "This feature will generate borrowing and return reports.")
