@@ -1,22 +1,41 @@
 import tkinter as tk
 from tkinter import messagebox
-from login import login_screen
-from books import add_book, view_books
+import subprocess
+import os
 
-# Start the main app after login
-def start_dashboard():
-    root = tk.Tk()
-    root.title("School Library System - Admin Dashboard")
-    root.geometry("400x300")
+# Function to handle login
+def login():
+    username = user_entry.get()
+    password = pass_entry.get()
 
-    tk.Label(root, text="Welcome Admin", font=("Helvetica", 16, "bold")).pack(pady=20)
+    if username == "Admin" and password == "AdminLibrary":
+        messagebox.showinfo("Login Success", "Welcome to the School Library System!")
+        root.destroy()  # Close the login window
 
-    tk.Button(root, text="Add Book", width=20, command=add_book).pack(pady=10)
-    tk.Button(root, text="View All Books", width=20, command=view_books).pack(pady=10)
-    # We'll add Borrow, Return, Search, Edit, Delete later here
+        # Run the dashboard.py script
+        if os.path.exists("dashboard.py"):
+            subprocess.run(["python", "dashboard.py"])
+        else:
+            messagebox.showerror("Error", "dashboard.py not found.")
+    else:
+        messagebox.showerror("Login Failed", "Invalid username or password.")
 
-    tk.Button(root, text="Logout", width=20, command=lambda: [root.destroy(), login_screen()]).pack(pady=20)
-    root.mainloop()
+# GUI
+root = tk.Tk()
+root.title("Library Login")
+root.geometry("350x250")
+root.resizable(False, False)
 
-if __name__ == "__main__":
-    login_screen()
+tk.Label(root, text="Library Management Login", font=("Helvetica", 14, "bold")).pack(pady=15)
+
+tk.Label(root, text="Username:").pack()
+user_entry = tk.Entry(root, width=30)
+user_entry.pack(pady=5)
+
+tk.Label(root, text="Password:").pack()
+pass_entry = tk.Entry(root, show="*", width=30)
+pass_entry.pack(pady=5)
+
+tk.Button(root, text="Login", command=login, width=15, bg="blue", fg="white").pack(pady=15)
+
+root.mainloop()
