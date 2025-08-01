@@ -3,6 +3,9 @@ from tkinter import messagebox
 import books
 import borrow
 from reports import generate_report
+from alerts import check_due_alerts
+check_due_alerts()
+
 
 def open_dashboard():
     dashboard = tk.Tk()
