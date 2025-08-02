@@ -1,0 +1,12 @@
+[
+  {
+    "student_name": "John Doe",
+    "admission_number": "ADM123",
+    "student_class": "Grade 6",
+    "student_stream": "North",
+    "book_title": "Mathematics 101",
+    "borrow_date": "2025-08-01",
+    "return_date": "2025-08-07"
+  }
+]
+   
