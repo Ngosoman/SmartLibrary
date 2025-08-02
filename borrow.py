@@ -139,3 +139,38 @@ def check_due_books():
         for book in due_books:
             msg += f"{book[0]} ({book[1]}) - {book[4]}\n"
         messagebox.showinfo("Due Books", msg)
+
+def view_upcoming_returns():
+    window = tk.Toplevel()
+    window.title("Upcoming Returns")
+
+    columns = ("Student", "Admission", "Class", "Stream", "Book", "Borrow Date", "Due Date")
+    tree = ttk.Treeview(window, columns=columns, show="headings")
+    for col in columns:
+        tree.heading(col, text=col)
+        tree.column(col, width=100)
+    tree.pack(padx=10, pady=10, fill="both", expand=True)
+
+    today = datetime.now().date()
+    upcoming = []
+
+    try:
+        with open('borrowed_books.csv', 'r') as file:
+            reader = csv.reader(file)
+            for row in reader:
+                try:
+                    due_date = datetime.strptime(row[6], "%Y-%m-%d").date()
+                    days_remaining = (due_date - today).days
+                    if 0 < days_remaining <= 2:
+                        upcoming.append(row)
+                except (IndexError, ValueError):
+                    continue
+    except FileNotFoundError:
+        messagebox.showinfo("Info", "No borrowed books file found.")
+        return
+
+    for row in upcoming:
+        tree.insert('', tk.END, values=row)
+
+    if not upcoming:
+        messagebox.showinfo("Upcoming Returns", "No books are due in the next 2 days.")

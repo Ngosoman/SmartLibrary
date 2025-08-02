@@ -1,9 +1,11 @@
 import tkinter as tk
+import reports
 from tkinter import messagebox
 import books
 import borrow
+import alerts
 from reports import generate_report
-from alerts import view_upcoming_returns
+from borrow import view_upcoming_returns
 from alerts import check_due_alerts
 check_due_alerts()
 
@@ -27,7 +29,7 @@ def open_dashboard():
     tk.Button(dashboard, text="📋 View Borrowed Books", width=30, command=borrow.view_borrowed_books_window).pack(pady=5)
 
     # REPORT
-    tk.Button(dashboard, text="🧾 Generate Report", width=30, command=generate_report).pack(pady=5)
+    tk.Button(dashboard, text="🧾 Generate Report", width=30, command=reports.generate_report).pack(pady=5)
 
     # EXIT
     tk.Button(dashboard, text="🚪 Logout", width=30, command=dashboard.destroy).pack(pady=20)
