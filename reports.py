@@ -4,20 +4,22 @@ from datetime import datetime
 from fpdf import FPDF
 from tkinter import *
 from tkinter import messagebox
+import webbrowser
+
+import csv
 
 def generate_report():
-    file_path = "borrowed_books.json"
+    file_path = "borrowed_books.csv"
 
     if not os.path.exists(file_path):
-        messagebox.showerror("Error", "No borrowed books file found.")
+        messagebox.showerror("Error", "No borrowed books CSV file found.")
         return
 
-    with open(file_path, "r") as file:
-        try:
-            data = json.load(file)
-        except json.JSONDecodeError:
-            messagebox.showerror("Error", "Borrowed books file is corrupted.")
-            return
+    data = []
+    with open(file_path, "r", newline="", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            data.append(row)
 
     if not data:
         messagebox.showinfo("Info", "No borrowed books to include in the report.")
@@ -45,7 +47,7 @@ def generate_report():
         pdf.cell(col_widths[1], 10, record.get("admission_number", ""), 1)
         pdf.cell(col_widths[2], 10, record.get("student_class", ""), 1)
         pdf.cell(col_widths[3], 10, record.get("student_stream", ""), 1)
-        pdf.cell(col_widths[4], 10, record.get("book_title", "")[:20], 1)  # limit title if too long
+        pdf.cell(col_widths[4], 10, record.get("book_title", "")[:20], 1)
         pdf.cell(col_widths[5], 10, record.get("borrow_date", ""), 1)
         pdf.cell(col_widths[6], 10, record.get("return_date", ""), 1)
         pdf.ln()
@@ -53,8 +55,10 @@ def generate_report():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"BorrowedBooksReport_{timestamp}.pdf"
     pdf.output(filename)
+    webbrowser.open_new(rf"{filename}")
 
     messagebox.showinfo("Report Generated", f"Report saved as {filename}")
+
 
 # Tkinter UI
 def open_report_window():
