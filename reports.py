@@ -1,64 +1,58 @@
 import json
 import os
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 from datetime import datetime
 from fpdf import FPDF
 from tkinter import *
 from tkinter import messagebox
 import webbrowser
-
 import csv
 
 def generate_report():
-    file_path = "borrowed_books.csv"
+    filename = f"BorrowedBooksReport_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    filepath = os.path.join(os.getcwd(), filename)
 
-    if not os.path.exists(file_path):
-        messagebox.showerror("Error", "No borrowed books CSV file found.")
-        return
+    try:
+        with open("borrowed_books.csv", "r", newline="", encoding="utf-8") as file:
+            reader = csv.reader(file)
+            data = list(reader)
 
-    data = []
-    with open(file_path, "r", newline="", encoding="utf-8") as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            data.append(row)
+            if not data:
+                print("CSV file is empty.")
+                return
 
-    if not data:
-        messagebox.showinfo("Info", "No borrowed books to include in the report.")
-        return
+            # If no header row, add headers manually
+            headers = ["Student Name", "Admission No", "Class", "Stream", "Book Title", "Borrow Date", "Return Date"]
 
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(200, 10, "SmartLibrary Borrowed Books Report", ln=True, align="C")
+            c = canvas.Canvas(filepath, pagesize=A4)
+            c.setFont("Helvetica-Bold", 14)
+            c.drawString(200, 800, "Borrowed Books Report")
 
-    pdf.set_font("Arial", size=10)
-    pdf.ln(10)
+            c.setFont("Helvetica", 10)
+            y = 770
 
-    # Table headers
-    headers = ["Name", "Adm No", "Class", "Stream", "Book Title", "Borrow Date", "Return Date"]
-    col_widths = [30, 25, 20, 20, 40, 30, 30]
+            # Print headers
+            for i, header in enumerate(headers):
+                c.drawString(50 + i * 80, y, header)
 
-    for i, header in enumerate(headers):
-        pdf.cell(col_widths[i], 10, header, 1, 0, 'C')
-    pdf.ln()
+            y -= 20
 
-    # Table rows
-    for record in data:
-        pdf.cell(col_widths[0], 10, record.get("student_name", ""), 1)
-        pdf.cell(col_widths[1], 10, record.get("admission_number", ""), 1)
-        pdf.cell(col_widths[2], 10, record.get("student_class", ""), 1)
-        pdf.cell(col_widths[3], 10, record.get("student_stream", ""), 1)
-        pdf.cell(col_widths[4], 10, record.get("book_title", "")[:20], 1)
-        pdf.cell(col_widths[5], 10, record.get("borrow_date", ""), 1)
-        pdf.cell(col_widths[6], 10, record.get("return_date", ""), 1)
-        pdf.ln()
+            # Print data rows
+            for row in data:
+                for i, cell in enumerate(row):
+                    c.drawString(50 + i * 80, y, str(cell))
+                y -= 20
+                if y < 50:
+                    c.showPage()
+                    y = 800
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"BorrowedBooksReport_{timestamp}.pdf"
-    pdf.output(filename)
-    webbrowser.open_new(rf"{filename}")
+            c.save()
+            print(f"Report saved as {filename}")
+            webbrowser.open_new(rf"{filepath}")
 
-    messagebox.showinfo("Report Generated", f"Report saved as {filename}")
-
+    except FileNotFoundError:
+        print("borrowed_books.csv file not found.")
 
 # Tkinter UI
 def open_report_window():
