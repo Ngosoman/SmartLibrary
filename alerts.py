@@ -1,6 +1,36 @@
 import datetime
 from playsound import playsound
 import os
+from tkinter import messagebox
+import tkinter as tk
+from datetime import datetime, timedelta
+import sqlite3
+
+def view_upcoming_returns():
+    conn = sqlite3.connect("library.db")
+    cursor = conn.cursor()
+
+    today = datetime.today().date()
+    upcoming_date = today + timedelta(days=3)
+
+    cursor.execute("SELECT student_name, admission_no, class, stream, book_title, return_date FROM borrow WHERE return_date BETWEEN ? AND ?", (today, upcoming_date))
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows:
+        messagebox.showinfo("Upcoming Returns", "No books are due for return in the next 3 days.")
+        return
+
+    popup = tk.Toplevel()
+    popup.title("📅 Upcoming Book Returns")
+
+    tk.Label(popup, text="Books due for return within next 3 days", font=("Helvetica", 14, "bold")).pack(pady=10)
+
+    for row in rows:
+        student, adm, cls, stream, title, due = row
+        due_date = datetime.strptime(due, "%Y-%m-%d").strftime("%d %b %Y")
+        info = f"{student} ({adm}, {cls}-{stream}) → '{title}' by {due_date}"
+        tk.Label(popup, text=info, anchor="w", justify="left").pack(anchor="w", padx=10)
 
 # Hii function ina-check due dates na inatoa alert
 def check_due_alerts():

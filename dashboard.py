@@ -3,6 +3,7 @@ from tkinter import messagebox
 import books
 import borrow
 from reports import generate_report
+from alerts import view_upcoming_returns
 from alerts import check_due_alerts
 check_due_alerts()
 
@@ -22,7 +23,7 @@ def open_dashboard():
     # BORROW FUNCTIONS
     tk.Button(dashboard, text="👤 Record Borrowing", width=30, command=borrow.record_borrowing_window).pack(pady=5)
     tk.Button(dashboard, text="📤 Return Book", width=30, command=borrow.return_book_window).pack(pady=5)
-    tk.Button(dashboard, text="📆 Upcoming Returns", width=30, command=borrow.check_due_books).pack(pady=5)
+    tk.Button(dashboard, text="📆 Upcoming Returns", width=30, command=borrow.view_upcoming_returns).pack(pady=5)
     tk.Button(dashboard, text="📋 View Borrowed Books", width=30, command=borrow.view_borrowed_books_window).pack(pady=5)
 
     # REPORT
