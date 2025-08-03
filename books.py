@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import csv
 import os
+import uuid
 
 BOOKS_FILE = "books.csv"
 
@@ -9,7 +10,7 @@ BOOKS_FILE = "books.csv"
 def add_book_window():
     add_window = tk.Toplevel()
     add_window.title("Add New Book")
-    add_window.geometry("400x400")
+    add_window.geometry("400x500")
 
     tk.Label(add_window, text="Add New Book", font=("Helvetica", 14, "bold")).pack(pady=10)
 
@@ -41,15 +42,20 @@ def add_book_window():
             return
 
         qty = int(qty)
+        if qty < 1:
+            messagebox.showerror("Error", "Quantity must be at least 1.")
+            return
+
+        book_id = str(uuid.uuid4())[:8]  # generate short unique ID
 
         file_exists = os.path.isfile(BOOKS_FILE)
         with open(BOOKS_FILE, "a", newline="") as file:
             writer = csv.writer(file)
             if not file_exists:
-                writer.writerow(["Title", "Author", "Category", "Quantity"])
-            writer.writerow([title, author, cat, qty])
+                writer.writerow(["Book ID", "Title", "Author", "Category", "Quantity"])
+            writer.writerow([book_id, title, author, cat, qty])
 
-        messagebox.showinfo("Success", f"{qty} book(s) recorded successfully!")
+        messagebox.showinfo("Success", f"{qty} book(s) recorded successfully! Book ID: {book_id}")
         add_window.destroy()
 
     tk.Button(add_window, text="Save Book", command=save_book).pack(pady=15)
@@ -62,11 +68,11 @@ def view_books():
 
     view_window = tk.Toplevel()
     view_window.title("Library Books")
-    view_window.geometry("800x400")
+    view_window.geometry("900x400")
 
     tk.Label(view_window, text="All Books in Library", font=("Helvetica", 14, "bold")).pack(pady=10)
 
-    columns = ("Title", "Author", "Category", "Quantity")
+    columns = ("Book ID", "Title", "Author", "Category", "Quantity")
     tree = ttk.Treeview(view_window, columns=columns, show="headings")
 
     for col in columns:
@@ -75,13 +81,11 @@ def view_books():
 
     tree.pack(expand=True, fill="both", padx=20, pady=10)
 
-    # Load data
     with open(BOOKS_FILE, newline="") as file:
         reader = csv.DictReader(file)
         for row in reader:
-            tree.insert("", "end", values=(row["Title"], row["Author"], row["Category"], row["Quantity"]))
+            tree.insert("", "end", values=(row["Book ID"], row["Title"], row["Author"], row["Category"], row["Quantity"]))
 
-    # ---------------- Edit Book ----------------
     def edit_selected():
         selected = tree.selection()
         if not selected:
@@ -92,28 +96,28 @@ def view_books():
         values = item["values"]
         edit_window = tk.Toplevel()
         edit_window.title("Edit Book")
-        edit_window.geometry("400x350")
+        edit_window.geometry("400x400")
 
         tk.Label(edit_window, text="Edit Book", font=("Helvetica", 14, "bold")).pack(pady=10)
 
         tk.Label(edit_window, text="Title:").pack()
         title_entry = tk.Entry(edit_window, width=40)
-        title_entry.insert(0, values[0])
+        title_entry.insert(0, values[1])
         title_entry.pack(pady=5)
 
         tk.Label(edit_window, text="Author:").pack()
         author_entry = tk.Entry(edit_window, width=40)
-        author_entry.insert(0, values[1])
+        author_entry.insert(0, values[2])
         author_entry.pack(pady=5)
 
         tk.Label(edit_window, text="Category:").pack()
         category = ttk.Combobox(edit_window, values=["Textbook", "Novel", "Setbook", "Storybook"], state="readonly")
-        category.set(values[2])
+        category.set(values[3])
         category.pack(pady=5)
 
         tk.Label(edit_window, text="Quantity:").pack()
         quantity_entry = tk.Entry(edit_window, width=10)
-        quantity_entry.insert(0, values[3])
+        quantity_entry.insert(0, values[4])
         quantity_entry.pack(pady=5)
 
         def save_changes():
@@ -126,14 +130,13 @@ def view_books():
                 messagebox.showerror("Error", "Please fill all fields correctly.")
                 return
 
-            # Update in CSV
             updated_rows = []
             with open(BOOKS_FILE, newline="") as file:
                 reader = csv.reader(file)
                 headers = next(reader)
                 for row in reader:
-                    if row[0] == values[0] and row[1] == values[1]:
-                        updated_rows.append([new_title, new_author, new_category, new_quantity])
+                    if row[0] == values[0]:  # match Book ID
+                        updated_rows.append([row[0], new_title, new_author, new_category, new_quantity])
                     else:
                         updated_rows.append(row)
 
@@ -149,7 +152,6 @@ def view_books():
 
         tk.Button(edit_window, text="Save Changes", command=save_changes).pack(pady=15)
 
-    # ---------------- Delete Book ----------------
     def delete_selected():
         selected = tree.selection()
         if not selected:
@@ -168,8 +170,8 @@ def view_books():
             reader = csv.reader(file)
             headers = next(reader)
             for row in reader:
-                if row[0] == values[0] and row[1] == values[1]:
-                    continue  # skip the book
+                if row[0] == values[0]:  # match by Book ID
+                    continue
                 updated_rows.append(row)
 
         with open(BOOKS_FILE, "w", newline="") as file:
@@ -181,7 +183,6 @@ def view_books():
         view_window.destroy()
         view_books()
 
-    # Buttons for edit and delete
     btn_frame = tk.Frame(view_window)
     btn_frame.pack(pady=10)
     tk.Button(btn_frame, text="Edit Selected", command=edit_selected, bg="orange").pack(side="left", padx=10)
