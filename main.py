@@ -18,7 +18,7 @@ def login():
 root = tk.Tk()
 root.title("Library Login")
 root.geometry("350x250")
-root.resizable(False, False)
+root.resizable(True, True)
 
 tk.Label(root, text="Library Management Login", font=("Helvetica", 14, "bold")).pack(pady=15)
 

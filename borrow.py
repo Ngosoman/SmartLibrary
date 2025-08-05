@@ -104,12 +104,62 @@ class LibraryDB:
         self.conn.commit()
         return True
 
+    def borrow_book_by_id(self, student_data, book_id, due_date):
+        """Borrow using book ID"""
+        cursor = self.conn.cursor()
+        # Check availability
+        cursor.execute("SELECT quantity FROM books WHERE id=?", (book_id,))
+        book = cursor.fetchone()
+        if not book or book[0] <= 0:
+            raise ValueError("Book not available")
+        # Check borrow limit
+        cursor.execute("""
+        SELECT COUNT(*) FROM borrowed_books 
+        WHERE admission_number=? AND returned=0
+        """, (student_data['admission'],))
+        if cursor.fetchone()[0] >= 3:
+            raise ValueError("Maximum borrow limit (3 books) reached")
+        # Record borrowing
+        borrow_date = datetime.now().strftime("%Y-%m-%d")
+        cursor.execute("""
+        INSERT INTO borrowed_books (
+            book_id, student_name, admission_number, class, stream,
+            borrow_date, due_date
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            book_id, student_data['name'], student_data['admission'],
+            student_data['class'], student_data['stream'], 
+            borrow_date, due_date
+        ))
+        # Update inventory
+        cursor.execute("UPDATE books SET quantity = quantity - 1 WHERE id=?", (book_id,))
+        self.conn.commit()
+        return True
+
+    def return_book_by_id(self, admission_number, book_id):
+        """Return a book using its ID"""
+        cursor = self.conn.cursor()
+        # Find the borrowing record
+        cursor.execute("""
+        SELECT id FROM borrowed_books
+        WHERE admission_number=? AND book_id=? AND returned=0
+        """, (admission_number, book_id))
+        record = cursor.fetchone()
+        if not record:
+            raise ValueError("No matching active borrowing found")
+        # Mark as returned
+        cursor.execute("UPDATE borrowed_books SET returned=1 WHERE id=?", (record[0],))
+        # Restock book
+        cursor.execute("UPDATE books SET quantity = quantity + 1 WHERE id=?", (book_id,))
+        self.conn.commit()
+        return True
+
     # ---- QUERY METHODS ----
     def get_available_books(self):
-        """Get books with quantity > 0"""
+        """Get books with quantity > 0, return list of (id, title)"""
         cursor = self.conn.cursor()
-        cursor.execute("SELECT title FROM books WHERE quantity > 0")
-        return [book[0] for book in cursor.fetchall()]
+        cursor.execute("SELECT id, title FROM books WHERE quantity > 0")
+        return cursor.fetchall()
     
     def get_borrowed_books(self):
         """Get all active borrowings"""
@@ -141,10 +191,8 @@ class LibraryDB:
 # DASHBOARD-COMPATIBLE FUNCTIONS
 # --------------------------
 def record_borrowing_window():
-    """Main borrowing window (dashboard-compatible)"""
     db = LibraryDB()
-    available_books = db.get_available_books()
-
+    available_books = db.get_available_books()  # Now list of (id, title)
 
     def submit_borrow():
         student_data = {
@@ -153,19 +201,20 @@ def record_borrowing_window():
             'class': class_var.get(),
             'stream': entry_stream.get()
         }
-        book_title = book_var.get()
-        due_date_str = due_date_entry.get_date().strftime("%Y-%m-%d")
-        # No need to validate format, DateEntry ensures correct format
-    
-        if not book_title:
+        selected = book_var.get()
+        if not selected or selected == "No book selected":
             messagebox.showerror("Error", "No book selected!")
             return
+        # Extract book_id from selection
+        book_id = int(selected.split(" - ")[0])
+        due_date_str = due_date_entry.get_date().strftime("%Y-%m-%d")
         try:
-            if db.borrow_book(student_data, book_title, due_date_str):
+            if db.borrow_book_by_id(student_data, book_id, due_date_str):
                 messagebox.showinfo("Success", "Book borrowed successfully!")
                 window.destroy()
         except Exception as e:
             messagebox.showerror("Error", str(e))
+
     window = tk.Toplevel()
     window.title("Record Borrowing")
     window.geometry("400x450")
@@ -188,11 +237,12 @@ def record_borrowing_window():
     entry_stream = tk.Entry(window)
     entry_stream.grid(row=3, column=1, padx=10, pady=5)
 
-    tk.Label(window, text="Book Title").grid(row=4, column=0, padx=10, pady=5)
+    tk.Label(window, text="Book (ID - Title)").grid(row=4, column=0, padx=10, pady=5)
     book_var = tk.StringVar()
-    if available_books:
-        book_var.set(available_books[0])  # Set default selection
-        book_menu = tk.OptionMenu(window, book_var, *available_books)
+    book_options = [f"{bid} - {title}" for bid, title in available_books]
+    if book_options:
+        book_var.set(book_options[0])
+        book_menu = tk.OptionMenu(window, book_var, *book_options)
     else:
         book_var.set("No books available")
         book_menu = tk.OptionMenu(window, book_var, "No books available")
@@ -202,7 +252,7 @@ def record_borrowing_window():
     borrow_date = tk.Label(window, text=datetime.now().strftime("%Y-%m-%d"))
     borrow_date.grid(row=5, column=1, padx=10, pady=5)
 
-       # filepath: c:\Users\Mwambingu\Desktop\Job\SmartLibrary\borrow.py
+    
     tk.Label(window, text="Due Date").grid(row=6, column=0, padx=10, pady=5)
     due_date_entry = DateEntry(window, date_pattern="yyyy-mm-dd", 
                                mindate=datetime.now(), 
@@ -220,31 +270,59 @@ def record_borrowing_window():
 def return_book_window():
     """Book return window (dashboard-compatible)"""
     db = LibraryDB()
-    
+    # Only show books currently borrowed by this admission number
+    def update_books(*args):
+        admission = entry_admission.get()
+        if not admission:
+            book_menu['menu'].delete(0, 'end')
+            book_var.set("")
+            return
+        cursor = db.conn.cursor()
+        cursor.execute("""
+            SELECT b.id, b.title FROM borrowed_books bb
+            JOIN books b ON bb.book_id = b.id
+            WHERE bb.admission_number=? AND bb.returned=0
+        """, (admission,))
+        borrowed = cursor.fetchall()
+        book_options = [f"{bid} - {title}" for bid, title in borrowed]
+        book_menu['menu'].delete(0, 'end')
+        for opt in book_options:
+            book_menu['menu'].add_command(label=opt, command=tk._setit(book_var, opt))
+        if book_options:
+            book_var.set(book_options[0])
+        else:
+            book_var.set("")
+
     def submit_return():
         admission = entry_admission.get()
-        book_title = book_var.get()
-        
+        selected = book_var.get()
+        if not selected:
+            messagebox.showerror("Error", "No book selected!")
+            return
+        book_id = int(selected.split(" - ")[0])
         try:
-            if db.return_book(admission, book_title):
+            if db.return_book_by_id(admission, book_id):
                 messagebox.showinfo("Success", "Book returned successfully!")
                 window.destroy()
         except Exception as e:
             messagebox.showerror("Error", str(e))
-    
+
     window = tk.Toplevel()
     window.title("Return Book")
     window.geometry("300x200")
-    
+    window.resizable(True, True)
+
     tk.Label(window, text="Admission Number").grid(row=0, column=0, padx=10, pady=5)
     entry_admission = tk.Entry(window)
     entry_admission.grid(row=0, column=1, padx=10, pady=5)
-    
-    tk.Label(window, text="Book Title").grid(row=1, column=0, padx=10, pady=5)
+    entry_admission.bind("<FocusOut>", update_books)
+    entry_admission.bind("<KeyRelease>", update_books)
+
+    tk.Label(window, text="Book (ID - Title)").grid(row=1, column=0, padx=10, pady=5)
     book_var = tk.StringVar()
-    book_menu = tk.OptionMenu(window, book_var, *db.get_available_books())
+    book_menu = tk.OptionMenu(window, book_var, "")
     book_menu.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
-    
+
     tk.Button(window, text="Return Book", command=submit_return).grid(row=2, columnspan=2, pady=15)
 
 def view_borrowed_books_window():
