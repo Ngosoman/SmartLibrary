@@ -4,11 +4,106 @@ import csv
 import sqlite3
 from datetime import datetime
 
+
+try:
+    from tkcalendar import DateEntry
+    calendar_available = True
+except ImportError:
+    calendar_available = False
+
 def record_borrowing_window():
+
+    def borrow_book():
+        student_name = entry_name.get()
+        class_name = entry_class.get()
+        stream = entry_stream.get()
+        admission_number = entry_admission.get()
+        book_title = entry_book.get()
+        return_date = entry_date.get()
+
+        if not all([student_name, class_name, stream, admission_number, book_title, return_date]):
+            messagebox.showerror("Error", "Please fill all fields.")
+            return
+
+        try:
+            datetime.datetime.strptime(return_date, "%Y-%m-%d")
+        except ValueError:
+            messagebox.showerror("Error", "Date must be in YYYY-MM-DD format.")
+            return
+
+        conn = sqlite3.connect("smartlibrary.db")
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS borrowed_books (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_name TEXT,
+                class TEXT,
+                stream TEXT,
+                admission_number TEXT,
+                book_title TEXT,
+                return_date TEXT
+            )
+        """)
+
+        cursor.execute("""
+            INSERT INTO borrowed_books (
+                student_name, class, stream, admission_number, book_title, return_date
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        """, (student_name, class_name, stream, admission_number, book_title, return_date))
+
+        conn.commit()
+        conn.close()
+
+        messagebox.showinfo("Success", "Book borrowing recorded successfully.")
+
+        # Clear fields
+        entry_name.delete(0, tk.END)
+        entry_class.delete(0, tk.END)
+        entry_stream.delete(0, tk.END)
+        entry_admission.delete(0, tk.END)
+        entry_book.delete(0, tk.END)
+        entry_date.delete(0, tk.END)
+
+    window = tk.Toplevel()
+    window.title("Record Borrowed Book")
+    window.geometry("500x400")  # Ensure all fields are visible
+
+    tk.Label(window, text="Student Name").grid(row=0, column=0, padx=10, pady=5, sticky='e')
+    entry_name = tk.Entry(window)
+    entry_name.grid(row=0, column=1, padx=10, pady=5)
+
+    tk.Label(window, text="Class").grid(row=1, column=0, padx=10, pady=5, sticky='e')
+    entry_class = tk.Entry(window)
+    entry_class.grid(row=1, column=1, padx=10, pady=5)
+
+    tk.Label(window, text="Stream").grid(row=2, column=0, padx=10, pady=5, sticky='e')
+    entry_stream = tk.Entry(window)
+    entry_stream.grid(row=2, column=1, padx=10, pady=5)
+
+    tk.Label(window, text="Admission Number").grid(row=3, column=0, padx=10, pady=5, sticky='e')
+    entry_admission = tk.Entry(window)
+    entry_admission.grid(row=3, column=1, padx=10, pady=5)
+
+    tk.Label(window, text="Book Title").grid(row=4, column=0, padx=10, pady=5, sticky='e')
+    entry_book = tk.Entry(window)
+    entry_book.grid(row=4, column=1, padx=10, pady=5)
+
+    tk.Label(window, text="Date to Return (YYYY-MM-DD)").grid(row=5, column=0, padx=10, pady=5, sticky='e')
+    entry_date = tk.Entry(window)
+    entry_date.grid(row=5, column=1, padx=10, pady=5)
+
+    tk.Button(window, text="Borrow", command=borrow_book).grid(row=6, column=0, columnspan=2, pady=15)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    tk.Button(root, text="Open Borrow Book Window", command=record_borrowing_window).pack(padx=20, pady=20)
+    root.mainloop()
+
     def submit_borrow():
         student = entry_student.get().strip()
         admission = entry_admission.get().strip()
-        student_class = entry_class.get().strip()
+        student_class = class_var.get().strip()
         stream = entry_stream.get().strip()
         book_title = entry_book.get().strip()
         date_borrowed = entry_borrow_date.get().strip()
@@ -21,41 +116,67 @@ def record_borrowing_window():
         with open('borrowed_books.csv', 'a', newline='') as file:
             writer = csv.writer(file)
             writer.writerow([student, admission, student_class, stream, book_title, date_borrowed, date_due])
+
         messagebox.showinfo("Success", "Book borrowing recorded successfully.")
         window.destroy()
 
     window = tk.Toplevel()
-    window.title("Record Book Borrowing")
+    window.title("📚 Record Book Borrowing")
+    window.geometry("480x500")
+    window.configure(bg="#f7f7f7")
 
-    tk.Label(window, text="Student Name").grid(row=0, column=0, padx=10, pady=5)
-    entry_student = tk.Entry(window)
-    entry_student.grid(row=0, column=1, padx=10, pady=5)
+    tk.Label(window, text="📖 Record a Borrowed Book", font=("Helvetica", 16, "bold"),
+             bg="#f7f7f7", fg="#2c3e50").pack(pady=20)
 
-    tk.Label(window, text="Admission Number").grid(row=1, column=0, padx=10, pady=5)
-    entry_admission = tk.Entry(window)
-    entry_admission.grid(row=1, column=1, padx=10, pady=5)
+    form_frame = tk.Frame(window, bg="#f7f7f7")
+    form_frame.pack()
 
-    tk.Label(window, text="Class").grid(row=2, column=0, padx=10, pady=5)
-    entry_class = tk.Entry(window)
-    entry_class.grid(row=2, column=1, padx=10, pady=5)
+    # Fields
+    tk.Label(form_frame, text="Student Name", bg="#f7f7f7").grid(row=0, column=0, sticky="e", padx=10, pady=6)
+    entry_student = tk.Entry(form_frame, width=30)
+    entry_student.grid(row=0, column=1, padx=10, pady=6)
 
-    tk.Label(window, text="Stream").grid(row=3, column=0, padx=10, pady=5)
-    entry_stream = tk.Entry(window)
-    entry_stream.grid(row=3, column=1, padx=10, pady=5)
+    tk.Label(form_frame, text="Admission Number", bg="#f7f7f7").grid(row=1, column=0, sticky="e", padx=10, pady=6)
+    entry_admission = tk.Entry(form_frame, width=30)
+    entry_admission.grid(row=1, column=1, padx=10, pady=6)
 
-    tk.Label(window, text="Book Title").grid(row=4, column=0, padx=10, pady=5)
-    entry_book = tk.Entry(window)
-    entry_book.grid(row=4, column=1, padx=10, pady=5)
+    tk.Label(form_frame, text="Class", bg="#f7f7f7").grid(row=2, column=0, sticky="e", padx=10, pady=6)
+    class_var = tk.StringVar()
+    class_options = ["Grade " + str(i) for i in range(1, 9)] + ["Form " + str(i) for i in range(1, 5)]
+    entry_class = tk.OptionMenu(form_frame, class_var, *class_options)
+    entry_class.grid(row=2, column=1, padx=10, pady=6)
+    class_var.set("Grade 1")
 
-    tk.Label(window, text="Date Borrowed (YYYY-MM-DD)").grid(row=5, column=0, padx=10, pady=5)
-    entry_borrow_date = tk.Entry(window)
-    entry_borrow_date.grid(row=5, column=1, padx=10, pady=5)
+    tk.Label(form_frame, text="Stream", bg="#f7f7f7").grid(row=3, column=0, sticky="e", padx=10, pady=6)
+    entry_stream = tk.Entry(form_frame, width=30)
+    entry_stream.grid(row=3, column=1, padx=10, pady=6)
 
-    tk.Label(window, text="Return Date (YYYY-MM-DD)").grid(row=6, column=0, padx=10, pady=5)
-    entry_due_date = tk.Entry(window)
-    entry_due_date.grid(row=6, column=1, padx=10, pady=5)
+    tk.Label(form_frame, text="Book Title", bg="#f7f7f7").grid(row=4, column=0, sticky="e", padx=10, pady=6)
+    entry_book = tk.Entry(form_frame, width=30)
+    entry_book.grid(row=4, column=1, padx=10, pady=6)
 
-    tk.Button(window, text="Submit", command=submit_borrow).grid(row=7, column=0, columnspan=2, pady=10)
+    # Borrowed date (auto-filled)
+    tk.Label(form_frame, text="Date Borrowed", bg="#f7f7f7").grid(row=5, column=0, sticky="e", padx=10, pady=6)
+    today_str = datetime.today().strftime("%Y-%m-%d")
+    entry_borrow_date = tk.Entry(form_frame, width=30)
+    entry_borrow_date.insert(0, today_str)
+    entry_borrow_date.config(state='readonly')  # prevent editing
+    entry_borrow_date.grid(row=5, column=1, padx=10, pady=6)
+
+    # Return date
+    tk.Label(form_frame, text="Return Date", bg="#f7f7f7").grid(row=6, column=0, sticky="e", padx=10, pady=6)
+    if calendar_available:
+        entry_due_date = DateEntry(form_frame, width=27, background='darkblue',
+                                   foreground='white', date_pattern='yyyy-mm-dd')
+    else:
+        entry_due_date = tk.Entry(form_frame, width=30)
+    entry_due_date.grid(row=6, column=1, padx=10, pady=6)
+
+    tk.Button(window, text="✅ Submit", command=submit_borrow, bg="#27ae60",
+              fg="white", font=("Helvetica", 11, "bold"), width=20).pack(pady=25)
+
+    window.grab_set()
+
 
 def return_book_window():
     def return_book():
