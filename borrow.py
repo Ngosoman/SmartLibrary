@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from plyer import notification
 import winsound
 import os
+from tkcalendar import DateEntry
 
 # Configuration
 DB_FILE = "library.db"
@@ -43,7 +44,7 @@ class LibraryDB:
         self.conn.commit()
 
     # ---- CORE OPERATIONS ----
-    def borrow_book(self, student_data, book_title):
+    def borrow_book(self, student_data, book_title, due_date):
         """Process book borrowing"""
         cursor = self.conn.cursor()
         
@@ -63,7 +64,6 @@ class LibraryDB:
         
         # Record borrowing
         borrow_date = datetime.now().strftime("%Y-%m-%d")
-        due_date = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
         
         cursor.execute("""
         INSERT INTO borrowed_books (
@@ -145,6 +145,7 @@ def record_borrowing_window():
     db = LibraryDB()
     available_books = db.get_available_books()
 
+
     def submit_borrow():
         student_data = {
             'name': entry_name.get(),
@@ -153,16 +154,18 @@ def record_borrowing_window():
             'stream': entry_stream.get()
         }
         book_title = book_var.get()
+        due_date_str = due_date_entry.get_date().strftime("%Y-%m-%d")
+        # No need to validate format, DateEntry ensures correct format
+    
         if not book_title:
             messagebox.showerror("Error", "No book selected!")
             return
         try:
-            if db.borrow_book(student_data, book_title):
+            if db.borrow_book(student_data, book_title, due_date_str):
                 messagebox.showinfo("Success", "Book borrowed successfully!")
                 window.destroy()
         except Exception as e:
             messagebox.showerror("Error", str(e))
-
     window = tk.Toplevel()
     window.title("Record Borrowing")
     window.geometry("400x450")
@@ -189,16 +192,23 @@ def record_borrowing_window():
     book_var = tk.StringVar()
     if available_books:
         book_var.set(available_books[0])  # Set default selection
-    book_menu = tk.OptionMenu(window, book_var, *available_books)
+        book_menu = tk.OptionMenu(window, book_var, *available_books)
+    else:
+        book_var.set("No books available")
+        book_menu = tk.OptionMenu(window, book_var, "No books available")
     book_menu.grid(row=4, column=1, padx=10, pady=5, sticky="ew")
 
     tk.Label(window, text="Borrow Date").grid(row=5, column=0, padx=10, pady=5)
     borrow_date = tk.Label(window, text=datetime.now().strftime("%Y-%m-%d"))
     borrow_date.grid(row=5, column=1, padx=10, pady=5)
 
+       # filepath: c:\Users\Mwambingu\Desktop\Job\SmartLibrary\borrow.py
     tk.Label(window, text="Due Date").grid(row=6, column=0, padx=10, pady=5)
-    due_date = tk.Label(window, text=(datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d"))
-    due_date.grid(row=6, column=1, padx=10, pady=5)
+    due_date_entry = DateEntry(window, date_pattern="yyyy-mm-dd", 
+                               mindate=datetime.now(), 
+                               width=18)
+    due_date_entry.set_date(datetime.now() + timedelta(days=14))  # Default 14 days ahead
+    due_date_entry.grid(row=6, column=1, padx=10, pady=5)
 
     submit_btn = tk.Button(window, text="Submit", command=submit_borrow)
     submit_btn.grid(row=7, columnspan=2, pady=15)
