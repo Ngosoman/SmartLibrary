@@ -14,7 +14,7 @@ def generate_report():
     filepath = os.path.join(os.getcwd(), filename)
 
     try:
-        with open("borrowed_books.csv", "r", newline="", encoding="utf-8") as file:
+        with open("books.csv", "r", newline="", encoding="utf-8") as file:
             reader = csv.reader(file)
             data = list(reader)
 

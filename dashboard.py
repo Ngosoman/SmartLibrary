@@ -17,7 +17,7 @@ def open_dashboard():
     dashboard = tk.Tk()
     dashboard.title("SmartLibrary Dashboard")
     dashboard.geometry("500x650")
-    dashboard.resizable(False, False)
+    dashboard.resizable(True, True)
 
     tk.Label(dashboard, text="📚 SmartLibrary System", font=("Helvetica", 16, "bold")).pack(pady=20)
 

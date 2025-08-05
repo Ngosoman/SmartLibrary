@@ -317,7 +317,7 @@ def return_book_window():
         if not selected:
             messagebox.showerror("Error", "No book selected!")
             return
-        book_id = int(selected.split(" - ")[0])
+        book_id = selected.split(" - ")[0]  # Use as string
         try:
             if db.return_book_by_id(admission, book_id):
                 messagebox.showinfo("Success", "Book returned successfully!")
