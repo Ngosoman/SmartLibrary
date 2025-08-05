@@ -1,472 +1,290 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
-import csv
+from tkinter import ttk, messagebox
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
+from plyer import notification
+import winsound
+import os
 
+# Configuration
+DB_FILE = "smartlibrary.db"
+SOUND_FILE = "alert_tomorrow.mp3.mp3"
 
-try:
-    from tkcalendar import DateEntry
-    calendar_available = True
-except ImportError:
-    calendar_available = False
-
-def record_borrowing_window():
-
-    def borrow_book():
-        student_name = entry_name.get()
-        class_name = entry_class.get()
-        stream = entry_stream.get()
-        admission_number = entry_admission.get()
-        book_title = entry_book.get()
-        return_date = entry_date.get()
-
-        if not all([student_name, class_name, stream, admission_number, book_title, return_date]):
-            messagebox.showerror("Error", "Please fill all fields.")
-            return
-
-        try:
-            datetime.datetime.strptime(return_date, "%Y-%m-%d")
-        except ValueError:
-            messagebox.showerror("Error", "Date must be in YYYY-MM-DD format.")
-            return
-
-        conn = sqlite3.connect("smartlibrary.db")
-        cursor = conn.cursor()
-
+class LibraryDB:
+    """Database handler for all library operations"""
+    
+    def __init__(self):
+        self.conn = sqlite3.connect(DB_FILE)
+        self.create_tables()
+        
+    def create_tables(self):
+        cursor = self.conn.cursor()
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS borrowed_books (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                student_name TEXT,
-                class TEXT,
-                stream TEXT,
-                admission_number TEXT,
-                book_title TEXT,
-                return_date TEXT
-            )
+        CREATE TABLE IF NOT EXISTS books (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            author TEXT NOT NULL,
+            quantity INTEGER DEFAULT 1 CHECK(quantity >= 0)
+        )""")
+        
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS borrowed_books (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            book_id INTEGER NOT NULL,
+            student_name TEXT NOT NULL,
+            admission_number TEXT NOT NULL,
+            class TEXT NOT NULL,
+            stream TEXT NOT NULL,
+            borrow_date TEXT NOT NULL,
+            due_date TEXT NOT NULL,
+            returned INTEGER DEFAULT 0,
+            FOREIGN KEY(book_id) REFERENCES books(id)
+        )""")
+        self.conn.commit()
+
+    # ---- CORE OPERATIONS ----
+    def borrow_book(self, student_data, book_title):
+        """Process book borrowing"""
+        cursor = self.conn.cursor()
+        
+        # Get book ID and check availability
+        cursor.execute("SELECT id, quantity FROM books WHERE title=?", (book_title,))
+        book = cursor.fetchone()
+        if not book or book[1] <= 0:
+            raise ValueError("Book not available")
+        
+        # Check borrow limit
+        cursor.execute("""
+        SELECT COUNT(*) FROM borrowed_books 
+        WHERE admission_number=? AND returned=0
+        """, (student_data['admission'],))
+        if cursor.fetchone()[0] >= 3:
+            raise ValueError("Maximum borrow limit (3 books) reached")
+        
+        # Record borrowing
+        borrow_date = datetime.now().strftime("%Y-%m-%d")
+        due_date = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
+        
+        cursor.execute("""
+        INSERT INTO borrowed_books (
+            book_id, student_name, admission_number, class, stream,
+            borrow_date, due_date
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            book[0], student_data['name'], student_data['admission'],
+            student_data['class'], student_data['stream'], 
+            borrow_date, due_date
+        ))
+        
+        # Update inventory
+        cursor.execute("UPDATE books SET quantity = quantity - 1 WHERE id=?", (book[0],))
+        self.conn.commit()
+        return True
+
+    def return_book(self, admission_number, book_title):
+        """Process book return"""
+        cursor = self.conn.cursor()
+        
+        # Find the borrowing record
+        cursor.execute("""
+        SELECT bb.id, bb.book_id FROM borrowed_books bb
+        JOIN books b ON bb.book_id = b.id
+        WHERE bb.admission_number=? AND b.title=? AND bb.returned=0
+        """, (admission_number, book_title))
+        record = cursor.fetchone()
+        
+        if not record:
+            raise ValueError("No matching active borrowing found")
+        
+        # Mark as returned
+        cursor.execute("UPDATE borrowed_books SET returned=1 WHERE id=?", (record[0],))
+        
+        # Restock book
+        cursor.execute("UPDATE books SET quantity = quantity + 1 WHERE id=?", (record[1],))
+        self.conn.commit()
+        return True
+
+    # ---- QUERY METHODS ----
+    def get_available_books(self):
+        """Get books with quantity > 0"""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT title FROM books WHERE quantity > 0")
+        return [book[0] for book in cursor.fetchall()]
+    
+    def get_borrowed_books(self):
+        """Get all active borrowings"""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+        SELECT b.title, bb.student_name, bb.admission_number, 
+               bb.class, bb.stream, bb.borrow_date, bb.due_date
+        FROM borrowed_books bb
+        JOIN books b ON bb.book_id = b.id
+        WHERE bb.returned = 0
         """)
-
+        return cursor.fetchall()
+    
+    def get_upcoming_returns(self, days=2):
+        """Get books due in next X days"""
+        cursor = self.conn.cursor()
+        today = datetime.now().strftime("%Y-%m-%d")
+        future_date = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
+        
         cursor.execute("""
-            INSERT INTO borrowed_books (
-                student_name, class, stream, admission_number, book_title, return_date
-            ) VALUES (?, ?, ?, ?, ?, ?)
-        """, (student_name, class_name, stream, admission_number, book_title, return_date))
+        SELECT b.title, bb.student_name, bb.due_date 
+        FROM borrowed_books bb
+        JOIN books b ON bb.book_id = b.id
+        WHERE bb.returned=0 AND bb.due_date BETWEEN ? AND ?
+        """, (today, future_date))
+        return cursor.fetchall()
 
-        conn.commit()
-        conn.close()
-
-        messagebox.showinfo("Success", "Book borrowing recorded successfully.")
-
-        # Clear fields
-        entry_name.delete(0, tk.END)
-        entry_class.delete(0, tk.END)
-        entry_stream.delete(0, tk.END)
-        entry_admission.delete(0, tk.END)
-        entry_book.delete(0, tk.END)
-        entry_date.delete(0, tk.END)
-
+# --------------------------
+# DASHBOARD-COMPATIBLE FUNCTIONS
+# --------------------------
+def record_borrowing_window():
+    """Main borrowing window (dashboard-compatible)"""
+    db = LibraryDB()
+    
+    def submit_borrow():
+        student_data = {
+            'name': entry_name.get(),
+            'admission': entry_admission.get(),
+            'class': class_var.get(),
+            'stream': entry_stream.get()
+        }
+        book_title = book_var.get()
+        
+        try:
+            if db.borrow_book(student_data, book_title):
+                messagebox.showinfo("Success", "Book borrowed successfully!")
+                window.destroy()
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+    
     window = tk.Toplevel()
-    window.title("Record Borrowed Book")
-    window.geometry("500x400")  # Ensure all fields are visible
-
-    tk.Label(window, text="Student Name").grid(row=0, column=0, padx=10, pady=5, sticky='e')
+    window.title("Record Borrowing")
+    window.geometry("400x450")
+    
+    # Form fields
+    tk.Label(window, text="Student Name").grid(row=0, column=0, padx=10, pady=5)
     entry_name = tk.Entry(window)
     entry_name.grid(row=0, column=1, padx=10, pady=5)
-
-    tk.Label(window, text="Class").grid(row=1, column=0, padx=10, pady=5, sticky='e')
-    entry_class = tk.Entry(window)
-    entry_class.grid(row=1, column=1, padx=10, pady=5)
-
-    tk.Label(window, text="Stream").grid(row=2, column=0, padx=10, pady=5, sticky='e')
-    entry_stream = tk.Entry(window)
-    entry_stream.grid(row=2, column=1, padx=10, pady=5)
-
-    tk.Label(window, text="Admission Number").grid(row=3, column=0, padx=10, pady=5, sticky='e')
-    entry_admission = tk.Entry(window)
-    entry_admission.grid(row=3, column=1, padx=10, pady=5)
-
-    tk.Label(window, text="Book Title").grid(row=4, column=0, padx=10, pady=5, sticky='e')
-    entry_book = tk.Entry(window)
-    entry_book.grid(row=4, column=1, padx=10, pady=5)
-
-    tk.Label(window, text="Date to Return (YYYY-MM-DD)").grid(row=5, column=0, padx=10, pady=5, sticky='e')
-    entry_date = tk.Entry(window)
-    entry_date.grid(row=5, column=1, padx=10, pady=5)
-
-    tk.Button(window, text="Borrow", command=borrow_book).grid(row=6, column=0, columnspan=2, pady=15)
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    tk.Button(root, text="Open Borrow Book Window", command=record_borrowing_window).pack(padx=20, pady=20)
-    root.mainloop()
-
-    def submit_borrow():
-        student = entry_student.get().strip()
-        admission = entry_admission.get().strip()
-        student_class = class_var.get().strip()
-        stream = entry_stream.get().strip()
-        book_title = entry_book.get().strip()
-        date_borrowed = entry_borrow_date.get().strip()
-        date_due = entry_due_date.get().strip()
-
-        if not all([student, admission, student_class, stream, book_title, date_borrowed, date_due]):
-            messagebox.showerror("Error", "Please fill in all fields.")
-            return
-
-        with open('borrowed_books.csv', 'a', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow([student, admission, student_class, stream, book_title, date_borrowed, date_due])
-
-        messagebox.showinfo("Success", "Book borrowing recorded successfully.")
-        window.destroy()
-
-    window = tk.Toplevel()
-    window.title("📚 Record Book Borrowing")
-    window.geometry("480x500")
-    window.configure(bg="#f7f7f7")
-
-    tk.Label(window, text="📖 Record a Borrowed Book", font=("Helvetica", 16, "bold"),
-             bg="#f7f7f7", fg="#2c3e50").pack(pady=20)
-
-    form_frame = tk.Frame(window, bg="#f7f7f7")
-    form_frame.pack()
-
-    # Fields
-    tk.Label(form_frame, text="Student Name", bg="#f7f7f7").grid(row=0, column=0, sticky="e", padx=10, pady=6)
-    entry_student = tk.Entry(form_frame, width=30)
-    entry_student.grid(row=0, column=1, padx=10, pady=6)
-
-    tk.Label(form_frame, text="Admission Number", bg="#f7f7f7").grid(row=1, column=0, sticky="e", padx=10, pady=6)
-    entry_admission = tk.Entry(form_frame, width=30)
-    entry_admission.grid(row=1, column=1, padx=10, pady=6)
-
-    tk.Label(form_frame, text="Class", bg="#f7f7f7").grid(row=2, column=0, sticky="e", padx=10, pady=6)
-    class_var = tk.StringVar()
-    class_options = ["Grade " + str(i) for i in range(1, 9)] + ["Form " + str(i) for i in range(1, 5)]
-    entry_class = tk.OptionMenu(form_frame, class_var, *class_options)
-    entry_class.grid(row=2, column=1, padx=10, pady=6)
-    class_var.set("Grade 1")
-
-    tk.Label(form_frame, text="Stream", bg="#f7f7f7").grid(row=3, column=0, sticky="e", padx=10, pady=6)
-    entry_stream = tk.Entry(form_frame, width=30)
-    entry_stream.grid(row=3, column=1, padx=10, pady=6)
-
-    tk.Label(form_frame, text="Book Title", bg="#f7f7f7").grid(row=4, column=0, sticky="e", padx=10, pady=6)
-    entry_book = tk.Entry(form_frame, width=30)
-    entry_book.grid(row=4, column=1, padx=10, pady=6)
-
-    # Borrowed date (auto-filled)
-    tk.Label(form_frame, text="Date Borrowed", bg="#f7f7f7").grid(row=5, column=0, sticky="e", padx=10, pady=6)
-    today_str = datetime.today().strftime("%Y-%m-%d")
-    entry_borrow_date = tk.Entry(form_frame, width=30)
-    entry_borrow_date.insert(0, today_str)
-    entry_borrow_date.config(state='readonly')  # prevent editing
-    entry_borrow_date.grid(row=5, column=1, padx=10, pady=6)
-
-    # Return date
-    tk.Label(form_frame, text="Return Date", bg="#f7f7f7").grid(row=6, column=0, sticky="e", padx=10, pady=6)
-    if calendar_available:
-        entry_due_date = DateEntry(form_frame, width=27, background='darkblue',
-                                   foreground='white', date_pattern='yyyy-mm-dd')
-    else:
-        entry_due_date = tk.Entry(form_frame, width=30)
-    entry_due_date.grid(row=6, column=1, padx=10, pady=6)
-
-    tk.Button(window, text="✅ Submit", command=submit_borrow, bg="#27ae60",
-              fg="white", font=("Helvetica", 11, "bold"), width=20).pack(pady=25)
-
-    window.grab_set()
-
-
-def return_book_window():
-    def return_book():
-        admission_number = entry_admission.get().strip()
-        book_title = entry_book.get().strip()
-
-        rows = []
-        returned = False
-
-        try:
-            with open('borrowed_books.csv', 'r') as file:
-                reader = csv.reader(file)
-                for row in reader:
-                    if row[1] == admission_number and row[4] == book_title:
-                        returned = True
-                        continue
-                    rows.append(row)
-
-            if returned:
-                with open('borrowed_books.csv', 'w', newline='') as file:
-                    writer = csv.writer(file)
-                    writer.writerows(rows)
-                messagebox.showinfo("Success", "Book returned successfully.")
-                window.destroy()
-            else:
-                messagebox.showerror("Error", "No matching borrowed book found.")
-        except FileNotFoundError:
-            messagebox.showerror("Error", "Borrowed books file not found.")
-
-    window = tk.Toplevel()
-    window.title("Return Book")
-
-    tk.Label(window, text="Admission Number").grid(row=0, column=0, padx=10, pady=5)
-    entry_admission = tk.Entry(window)
-    entry_admission.grid(row=0, column=1, padx=10, pady=5)
-
-    tk.Label(window, text="Book Title").grid(row=1, column=0, padx=10, pady=5)
-    entry_book = tk.Entry(window)
-    entry_book.grid(row=1, column=1, padx=10, pady=5)
-
-    tk.Button(window, text="Return Book", command=return_book).grid(row=2, column=0, columnspan=2, pady=10)
-
-def view_borrowed_books_window():
-    window = tk.Toplevel()
-    window.title("Borrowed Books")
-
-    columns = ("Student", "Admission", "Class", "Stream", "Book", "Borrow Date", "Due Date")
-    tree = ttk.Treeview(window, columns=columns, show="headings")
-    for col in columns:
-        tree.heading(col, text=col)
-        tree.column(col, width=100)
-    tree.pack(padx=10, pady=10, fill="both", expand=True)
-
-    try:
-        with open('borrowed_books.csv', 'r') as file:
-            reader = csv.reader(file)
-            for row in reader:
-                tree.insert('', tk.END, values=row)
-    except FileNotFoundError:
-        messagebox.showinfo("Info", "No borrowed books recorded yet.")
-
-def check_due_books():
-    today = datetime.now().date()
-    due_books = []
-
-    try:
-        with open('borrowed_books.csv', 'r') as file:
-            reader = csv.reader(file)
-            for row in reader:
-                try:
-                    due_date = datetime.strptime(row[6], "%Y-%m-%d").date()
-                    if due_date == today:
-                        due_books.append(row)
-                except (IndexError, ValueError):
-                    continue
-    except FileNotFoundError:
-        return
-
-    if due_books:
-        msg = "Books due today:\n\n"
-        for book in due_books:
-            msg += f"{book[0]} ({book[1]}) - {book[4]}\n"
-        messagebox.showinfo("Due Books", msg)
-
-def view_upcoming_returns():
-    window = tk.Toplevel()
-    window.title("Upcoming Returns")
-
-    columns = ("Student", "Admission", "Class", "Stream", "Book", "Borrow Date", "Due Date")
-    tree = ttk.Treeview(window, columns=columns, show="headings")
-    for col in columns:
-        tree.heading(col, text=col)
-        tree.column(col, width=100)
-    tree.pack(padx=10, pady=10, fill="both", expand=True)
-
-    today = datetime.now().date()
-    upcoming = []
-
-    try:
-        with open('borrowed_books.csv', 'r') as file:
-            reader = csv.reader(file)
-            for row in reader:
-                try:
-                    due_date = datetime.strptime(row[6], "%Y-%m-%d").date()
-                    days_remaining = (due_date - today).days
-                    if 0 < days_remaining <= 2:
-                        upcoming.append(row)
-                except (IndexError, ValueError):
-                    continue
-    except FileNotFoundError:
-        messagebox.showinfo("Info", "No borrowed books file found.")
-        return
-
-    for row in upcoming:
-        tree.insert('', tk.END, values=row)
-
-    if not upcoming:
-        messagebox.showinfo("Upcoming Returns", "No books are due in the next 2 days.")
-import tkinter as tk
-from tkinter import messagebox, ttk
-import csv
-import os
-from datetime import datetime, date
-
-# Constants
-CSV_FILE = 'borrowed_books.csv'
-BOOKS_FILE = 'books.csv'  # assuming this file has: id,title,author,quantity
-
-# Utility functions
-def get_available_books():
-    books = []
-    try:
-        with open(BOOKS_FILE, 'r') as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                if int(row['quantity']) > 0:
-                    books.append(row['title'])
-    except FileNotFoundError:
-        pass
-    return books
-
-def is_valid_date(date_text):
-    try:
-        date_obj = datetime.strptime(date_text, "%Y-%m-%d").date()
-        return date_obj >= date.today()
-    except ValueError:
-        return False
-
-def record_borrowing_window():
-    def submit_borrow():
-        student = entry_student.get().strip()
-        admission = entry_admission.get().strip()
-        student_class = combo_class.get()
-        stream = entry_stream.get().strip()
-        book_title = combo_book.get()
-        borrow_date = datetime.now().strftime("%Y/%m/%d")
-        date_due = entry_due_date.get().strip()
-
-        if not all([student, admission, student_class, stream, book_title, date_due]):
-            messagebox.showerror("Error", "Please fill in all fields.")
-            return
-
-        if not is_valid_date(date_due):
-            messagebox.showerror("Error", "Invalid return date or date is in the past.")
-            return
-
-        borrowed_books = []
-        try:
-            with open(CSV_FILE, 'r') as file:
-                reader = csv.reader(file)
-                borrowed_books = list(reader)
-        except FileNotFoundError:
-            pass
-
-        # Check if book already borrowed by the same person and not yet returned
-        count = sum(1 for row in borrowed_books if row[1] == admission and row[4] == book_title)
-        if count >= 3:
-            messagebox.showerror("Error", "Borrow limit reached for this book.")
-            return
-
-        # Reduce quantity of book in inventory
-        updated_books = []
-        found = False
-        with open(BOOKS_FILE, 'r') as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                if row['title'] == book_title and int(row['quantity']) > 0:
-                    row['quantity'] = str(int(row['quantity']) - 1)
-                    found = True
-                updated_books.append(row)
-
-        if not found:
-            messagebox.showerror("Error", "Book not found or unavailable.")
-            return
-
-        # Save borrowed book
-        with open(CSV_FILE, 'a', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow([student, admission, student_class, stream, book_title, borrow_date, date_due])
-
-        with open(BOOKS_FILE, 'w', newline='') as file:
-            writer = csv.DictWriter(file, fieldnames=['id', 'title', 'author', 'quantity'])
-            writer.writeheader()
-            writer.writerows(updated_books)
-
-        messagebox.showinfo("Success", "Book borrowing recorded successfully.")
-        window.destroy()
-
-    window = tk.Toplevel()
-    window.title("Record Book Borrowing")
-
-    tk.Label(window, text="Student Name").grid(row=0, column=0, padx=10, pady=5)
-    entry_student = tk.Entry(window)
-    entry_student.grid(row=0, column=1, padx=10, pady=5)
-
+    
     tk.Label(window, text="Admission Number").grid(row=1, column=0, padx=10, pady=5)
     entry_admission = tk.Entry(window)
     entry_admission.grid(row=1, column=1, padx=10, pady=5)
-
+    
     tk.Label(window, text="Class").grid(row=2, column=0, padx=10, pady=5)
-    class_options = [f"Grade {i}" for i in range(1, 9)]  # Primary grades
-    combo_class = ttk.Combobox(window, values=class_options, state="readonly")
-    combo_class.grid(row=2, column=1, padx=10, pady=5)
-
+    class_var = tk.StringVar(value="Grade 1")
+    class_menu = tk.OptionMenu(window, class_var, *[f"Grade {i}" for i in range(1,9)] + [f"Form {i}" for i in range(1,5)])
+    class_menu.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
+    
     tk.Label(window, text="Stream").grid(row=3, column=0, padx=10, pady=5)
     entry_stream = tk.Entry(window)
     entry_stream.grid(row=3, column=1, padx=10, pady=5)
-
+    
     tk.Label(window, text="Book Title").grid(row=4, column=0, padx=10, pady=5)
-    combo_book = ttk.Combobox(window, values=get_available_books(), state="readonly")
-    combo_book.grid(row=4, column=1, padx=10, pady=5)
-
-    tk.Label(window, text="Return Date (YYYY-MM-DD)").grid(row=5, column=0, padx=10, pady=5)
-    entry_due_date = tk.Entry(window)
-    entry_due_date.grid(row=5, column=1, padx=10, pady=5)
-
-    tk.Button(window, text="Submit", command=submit_borrow).grid(row=6, column=0, columnspan=2, pady=10)
+    book_var = tk.StringVar()
+    book_menu = tk.OptionMenu(window, book_var, *db.get_available_books())
+    book_menu.grid(row=4, column=1, padx=10, pady=5, sticky="ew")
+    
+    tk.Label(window, text="Borrow Date").grid(row=5, column=0, padx=10, pady=5)
+    borrow_date = tk.Label(window, text=datetime.now().strftime("%Y-%m-%d"))
+    borrow_date.grid(row=5, column=1, padx=10, pady=5)
+    
+    tk.Label(window, text="Due Date").grid(row=6, column=0, padx=10, pady=5)
+    due_date = tk.Label(window, text=(datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d"))
+    due_date.grid(row=6, column=1, padx=10, pady=5)
+    
+    tk.Button(window, text="Submit", command=submit_borrow).grid(row=7, columnspan=2, pady=15)
 
 def return_book_window():
-    def return_book():
-        admission_number = entry_admission.get().strip()
-        book_title = entry_book.get().strip()
-
-        rows = []
-        returned = False
-        updated_books = []
-
+    """Book return window (dashboard-compatible)"""
+    db = LibraryDB()
+    
+    def submit_return():
+        admission = entry_admission.get()
+        book_title = book_var.get()
+        
         try:
-            with open(CSV_FILE, 'r') as file:
-                reader = csv.reader(file)
-                for row in reader:
-                    if row[1] == admission_number and row[4] == book_title and not returned:
-                        returned = True
-                        continue
-                    rows.append(row)
-
-            if returned:
-                with open(CSV_FILE, 'w', newline='') as file:
-                    writer = csv.writer(file)
-                    writer.writerows(rows)
-
-                # Update inventory to increase quantity
-                with open(BOOKS_FILE, 'r') as file:
-                    reader = csv.DictReader(file)
-                    for row in reader:
-                        if row['title'] == book_title:
-                            row['quantity'] = str(int(row['quantity']) + 1)
-                        updated_books.append(row)
-
-                with open(BOOKS_FILE, 'w', newline='') as file:
-                    writer = csv.DictWriter(file, fieldnames=['id', 'title', 'author', 'quantity'])
-                    writer.writeheader()
-                    writer.writerows(updated_books)
-
-                messagebox.showinfo("Success", "Book returned successfully.")
+            if db.return_book(admission, book_title):
+                messagebox.showinfo("Success", "Book returned successfully!")
                 window.destroy()
-            else:
-                messagebox.showerror("Error", "No matching borrowed book found.")
-        except FileNotFoundError:
-            messagebox.showerror("Error", "Borrowed books file not found.")
-
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+    
     window = tk.Toplevel()
     window.title("Return Book")
-
+    window.geometry("300x200")
+    
     tk.Label(window, text="Admission Number").grid(row=0, column=0, padx=10, pady=5)
     entry_admission = tk.Entry(window)
     entry_admission.grid(row=0, column=1, padx=10, pady=5)
-
+    
     tk.Label(window, text="Book Title").grid(row=1, column=0, padx=10, pady=5)
-    entry_book = tk.Entry(window)
-    entry_book.grid(row=1, column=1, padx=10, pady=5)
+    book_var = tk.StringVar()
+    book_menu = tk.OptionMenu(window, book_var, *db.get_available_books())
+    book_menu.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
+    
+    tk.Button(window, text="Return Book", command=submit_return).grid(row=2, columnspan=2, pady=15)
 
-    tk.Button(window, text="Return Book", command=return_book).grid(row=2, column=0, columnspan=2, pady=10)
+def view_borrowed_books_window():
+    """Display all borrowed books (dashboard-compatible)"""
+    db = LibraryDB()
+    borrowed_books = db.get_borrowed_books()
+    
+    window = tk.Toplevel()
+    window.title("Borrowed Books")
+    window.geometry("800x400")
+    
+    tree = ttk.Treeview(window, columns=("Title", "Student", "Admission", "Class", "Stream", "Borrowed", "Due"))
+    tree.heading("#0", text="ID")
+    tree.column("#0", width=50)
+    
+    for i, col in enumerate(("Title", "Student", "Admission", "Class", "Stream", "Borrowed", "Due"), 1):
+        tree.heading(f"#{i}", text=col)
+        tree.column(f"#{i}", width=100)
+    
+    for book in borrowed_books:
+        tree.insert("", tk.END, values=book)
+    
+    tree.pack(fill="both", expand=True)
+
+def view_upcoming_returns():
+    """Show upcoming returns (dashboard-compatible)"""
+    db = LibraryDB()
+    upcoming = db.get_upcoming_returns()
+    
+    if not upcoming:
+        messagebox.showinfo("Upcoming Returns", "No books due in the next 2 days")
+        return
+    
+    window = tk.Toplevel()
+    window.title("Upcoming Returns")
+    window.geometry("500x300")
+    
+    tree = ttk.Treeview(window, columns=("Title", "Student", "Due Date"))
+    tree.heading("#0", text="ID")
+    tree.column("#0", width=50)
+    
+    for i, col in enumerate(("Title", "Student", "Due Date"), 1):
+        tree.heading(f"#{i}", text=col)
+        tree.column(f"#{i}", width=150)
+    
+    for i, book in enumerate(upcoming, 1):
+        tree.insert("", tk.END, text=str(i), values=book)
+    
+    tree.pack(fill="both", expand=True)
+
+def check_due_alerts():
+    """Check for overdue books (dashboard-compatible)"""
+    db = LibraryDB()
+    overdue = db.get_upcoming_returns(days=0)  # Books due yesterday or earlier
+    
+    if overdue:
+        notification.notify(
+            title="Overdue Books",
+            message=f"{len(overdue)} books are overdue!",
+            timeout=10
+        )
+        if os.path.exists(SOUND_FILE):
+            winsound.PlaySound(SOUND_FILE, winsound.SND_ASYNC)
