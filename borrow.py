@@ -7,7 +7,7 @@ import winsound
 import os
 
 # Configuration
-DB_FILE = "smartlibrary.db"
+DB_FILE = "library.db"
 SOUND_FILE = "alert_tomorrow.mp3.mp3"
 
 class LibraryDB:
@@ -143,7 +143,8 @@ class LibraryDB:
 def record_borrowing_window():
     """Main borrowing window (dashboard-compatible)"""
     db = LibraryDB()
-    
+    available_books = db.get_available_books()
+
     def submit_borrow():
         student_data = {
             'name': entry_name.get(),
@@ -152,50 +153,59 @@ def record_borrowing_window():
             'stream': entry_stream.get()
         }
         book_title = book_var.get()
-        
+        if not book_title:
+            messagebox.showerror("Error", "No book selected!")
+            return
         try:
             if db.borrow_book(student_data, book_title):
                 messagebox.showinfo("Success", "Book borrowed successfully!")
                 window.destroy()
         except Exception as e:
             messagebox.showerror("Error", str(e))
-    
+
     window = tk.Toplevel()
     window.title("Record Borrowing")
     window.geometry("400x450")
-    
+
     # Form fields
     tk.Label(window, text="Student Name").grid(row=0, column=0, padx=10, pady=5)
     entry_name = tk.Entry(window)
     entry_name.grid(row=0, column=1, padx=10, pady=5)
-    
+
     tk.Label(window, text="Admission Number").grid(row=1, column=0, padx=10, pady=5)
     entry_admission = tk.Entry(window)
     entry_admission.grid(row=1, column=1, padx=10, pady=5)
-    
+
     tk.Label(window, text="Class").grid(row=2, column=0, padx=10, pady=5)
     class_var = tk.StringVar(value="Grade 1")
     class_menu = tk.OptionMenu(window, class_var, *[f"Grade {i}" for i in range(1,9)] + [f"Form {i}" for i in range(1,5)])
     class_menu.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
-    
+
     tk.Label(window, text="Stream").grid(row=3, column=0, padx=10, pady=5)
     entry_stream = tk.Entry(window)
     entry_stream.grid(row=3, column=1, padx=10, pady=5)
-    
+
     tk.Label(window, text="Book Title").grid(row=4, column=0, padx=10, pady=5)
     book_var = tk.StringVar()
-    book_menu = tk.OptionMenu(window, book_var, *db.get_available_books())
+    if available_books:
+        book_var.set(available_books[0])  # Set default selection
+    book_menu = tk.OptionMenu(window, book_var, *available_books)
     book_menu.grid(row=4, column=1, padx=10, pady=5, sticky="ew")
-    
+
     tk.Label(window, text="Borrow Date").grid(row=5, column=0, padx=10, pady=5)
     borrow_date = tk.Label(window, text=datetime.now().strftime("%Y-%m-%d"))
     borrow_date.grid(row=5, column=1, padx=10, pady=5)
-    
+
     tk.Label(window, text="Due Date").grid(row=6, column=0, padx=10, pady=5)
     due_date = tk.Label(window, text=(datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d"))
     due_date.grid(row=6, column=1, padx=10, pady=5)
-    
-    tk.Button(window, text="Submit", command=submit_borrow).grid(row=7, columnspan=2, pady=15)
+
+    submit_btn = tk.Button(window, text="Submit", command=submit_borrow)
+    submit_btn.grid(row=7, columnspan=2, pady=15)
+
+    if not available_books:
+        submit_btn.config(state="disabled")
+        tk.Label(window, text="No books available to borrow.", fg="red").grid(row=8, columnspan=2, pady=10)
 
 def return_book_window():
     """Book return window (dashboard-compatible)"""
