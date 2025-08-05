@@ -192,7 +192,20 @@ class LibraryDB:
 # --------------------------
 def record_borrowing_window():
     db = LibraryDB()
-    available_books = db.get_available_books()  # Now list of (id, title)
+    all_books = db.get_available_books()  # List of (id, title)
+    filtered_books = all_books.copy()
+
+    def update_book_options(*args):
+        search_term = search_var.get().lower()
+        filtered = [f"{bid} - {title}" for bid, title in all_books if search_term in title.lower() or search_term in str(bid)]
+        book_menu['menu'].delete(0, 'end')
+        if filtered:
+            for opt in filtered:
+                book_menu['menu'].add_command(label=opt, command=tk._setit(book_var, opt))
+            book_var.set(filtered[0])
+        else:
+            book_menu['menu'].add_command(label="No books found", command=tk._setit(book_var, "No books found"))
+            book_var.set("No books found")
 
     def submit_borrow():
         student_data = {
@@ -202,10 +215,9 @@ def record_borrowing_window():
             'stream': entry_stream.get()
         }
         selected = book_var.get()
-        if not selected or selected == "No book selected":
+        if not selected or selected == "No book found":
             messagebox.showerror("Error", "No book selected!")
             return
-        # Extract book_id from selection
         book_id = int(selected.split(" - ")[0])
         due_date_str = due_date_entry.get_date().strftime("%Y-%m-%d")
         try:
@@ -217,7 +229,7 @@ def record_borrowing_window():
 
     window = tk.Toplevel()
     window.title("Record Borrowing")
-    window.geometry("400x450")
+    window.geometry("400x500")
 
     # Form fields
     tk.Label(window, text="Student Name").grid(row=0, column=0, padx=10, pady=5)
@@ -237,35 +249,41 @@ def record_borrowing_window():
     entry_stream = tk.Entry(window)
     entry_stream.grid(row=3, column=1, padx=10, pady=5)
 
-    tk.Label(window, text="Book (ID - Title)").grid(row=4, column=0, padx=10, pady=5)
+    tk.Label(window, text="Search Book").grid(row=4, column=0, padx=10, pady=5)
+    search_var = tk.StringVar()
+    search_entry = tk.Entry(window, textvariable=search_var)
+    search_entry.grid(row=4, column=1, padx=10, pady=5)
+    search_var.trace("w", update_book_options)
+
+    tk.Label(window, text="Book (ID - Title)").grid(row=5, column=0, padx=10, pady=5)
     book_var = tk.StringVar()
-    book_options = [f"{bid} - {title}" for bid, title in available_books]
+    book_options = [f"{bid} - {title}" for bid, title in all_books]
     if book_options:
         book_var.set(book_options[0])
         book_menu = tk.OptionMenu(window, book_var, *book_options)
     else:
         book_var.set("No books available")
         book_menu = tk.OptionMenu(window, book_var, "No books available")
-    book_menu.grid(row=4, column=1, padx=10, pady=5, sticky="ew")
+    book_menu.grid(row=5, column=1, padx=10, pady=5, sticky="ew")
 
-    tk.Label(window, text="Borrow Date").grid(row=5, column=0, padx=10, pady=5)
+    tk.Label(window, text="Borrow Date").grid(row=6, column=0, padx=10, pady=5)
     borrow_date = tk.Label(window, text=datetime.now().strftime("%Y-%m-%d"))
-    borrow_date.grid(row=5, column=1, padx=10, pady=5)
+    borrow_date.grid(row=6, column=1, padx=10, pady=5)
 
     
-    tk.Label(window, text="Due Date").grid(row=6, column=0, padx=10, pady=5)
+    tk.Label(window, text="Due Date").grid(row=7, column=0, padx=10, pady=5)
     due_date_entry = DateEntry(window, date_pattern="yyyy-mm-dd", 
                                mindate=datetime.now(), 
                                width=18)
     due_date_entry.set_date(datetime.now() + timedelta(days=14))  # Default 14 days ahead
-    due_date_entry.grid(row=6, column=1, padx=10, pady=5)
+    due_date_entry.grid(row=7, column=1, padx=10, pady=5)
 
     submit_btn = tk.Button(window, text="Submit", command=submit_borrow)
-    submit_btn.grid(row=7, columnspan=2, pady=15)
+    submit_btn.grid(row=8, columnspan=2, pady=15)
 
-    if not available_books:
+    if not all_books:
         submit_btn.config(state="disabled")
-        tk.Label(window, text="No books available to borrow.", fg="red").grid(row=8, columnspan=2, pady=10)
+        tk.Label(window, text="No books available to borrow.", fg="red").grid(row=9, columnspan=2, pady=10)
 
 def return_book_window():
     """Book return window (dashboard-compatible)"""
