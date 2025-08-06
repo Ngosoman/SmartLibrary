@@ -6,6 +6,7 @@ from plyer import notification
 import winsound
 import os
 from tkcalendar import DateEntry
+import csv
 
 # Configuration
 DB_FILE = "library.db"
@@ -223,6 +224,7 @@ def record_borrowing_window():
         try:
             if db.borrow_book_by_id(student_data, book_id, due_date_str):
                 messagebox.showinfo("Success", "Book borrowed successfully!")
+                record_borrowing_to_csv(student_data, selected.split(" - ")[1], datetime.now().strftime("%Y-%m-%d"), due_date_str)
                 window.destroy()
         except Exception as e:
             messagebox.showerror("Error", str(e))
@@ -404,3 +406,17 @@ def check_due_alerts():
         )
         if os.path.exists(SOUND_FILE):
             winsound.PlaySound(SOUND_FILE, winsound.SND_ASYNC)
+
+def record_borrowing_to_csv(student_data, book_title, borrow_date, due_date):
+    with open("borrowed_books.csv", "a", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        # Adjust the order to match your CSV: Name, Admission No, Class, Stream, Book Title, Borrow Date, Due Date
+        writer.writerow([
+            student_data['name'],
+            student_data['admission'],
+            student_data['class'],
+            student_data['stream'],
+            book_title,
+            borrow_date,
+            due_date
+        ])
