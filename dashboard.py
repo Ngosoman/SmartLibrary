@@ -56,19 +56,19 @@ def open_dashboard():
     card1 = ttk.Frame(stats_frame, style="Card.TFrame", padding=15)
     card1.grid(row=0, column=0, padx=10, sticky="nsew")
     ttk.Label(card1, text="Total Books", style="Header2.TLabel").pack()
-    ttk.Label(card1, text="1,245", font=('Segoe UI', 24, 'bold')).pack()
+    ttk.Label(card1, text="12", font=('Segoe UI', 24, 'bold')).pack()
     
     # Card 2: Books Borrowed
     card2 = ttk.Frame(stats_frame, style="Card.TFrame", padding=15)
     card2.grid(row=0, column=1, padx=10, sticky="nsew")
     ttk.Label(card2, text="Books Borrowed", style="Header2.TLabel").pack()
-    ttk.Label(card2, text="87", font=('Segoe UI', 24, 'bold')).pack()
+    ttk.Label(card2, text="8", font=('Segoe UI', 24, 'bold')).pack()
     
     # Card 3: Overdue Books
     card3 = ttk.Frame(stats_frame, style="Card.TFrame", padding=15)
     card3.grid(row=0, column=2, padx=10, sticky="nsew")
     ttk.Label(card3, text="Overdue Books", style="Header2.TLabel").pack()
-    ttk.Label(card3, text="5", font=('Segoe UI', 24, 'bold'), foreground="#e74c3c").pack()
+    ttk.Label(card3, text="3", font=('Segoe UI', 24, 'bold'), foreground="#e74c3c").pack()
     
     # Configure grid weights
     stats_frame.columnconfigure(0, weight=1)
@@ -170,9 +170,9 @@ def show_notifications(notifier):
     else:
         messagebox.showwarning("Notifications", "Notification system not initialized")
 
-def open_settings():
-    """Open system settings window"""
-    messagebox.showinfo("Settings", "System settings will be displayed here")
+# def open_settings():
+#     """Open system settings window"""
+#     messagebox.showinfo("Settings", "System settings will be displayed here")
 
 # Helper function to get current datetime
 def datetime_now():
