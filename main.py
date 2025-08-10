@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
 from dashboard import open_dashboard
-
 from theme import configure_styles
 
 # Function to handle login
@@ -36,7 +35,5 @@ pass_entry = tk.Entry(root, show="*", width=30)
 pass_entry.pack(pady=5)
 
 tk.Button(root, text="Login", command=login, width=15, bg="blue", fg="white").pack(pady=15)
-
-
 
 root.mainloop()

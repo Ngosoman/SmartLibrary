@@ -7,13 +7,13 @@ import alerts
 from notifications import NotificationManager
 from notifications import init_notifications
 from datetime import datetime
-from theme import configure_styles  # Import our styling
+from theme import configure_styles  
 
 # Run alerts check on launch
 alerts.check_due_alerts()
 
 def open_dashboard():
-    # Configure styles first
+    # Configure styles 
     configure_styles()
     
     # Create main dashboard window
@@ -161,7 +161,7 @@ def open_dashboard():
              foreground="#7f8c8d").pack(side=tk.RIGHT)
     
     # Center the window
-    dashboard.eval('tk::PlaceWindow %s center' % dashboard.winfo_pathname(dashboard.winfo_id()))
+    # dashboard.eval('tk::PlaceWindow %s center' % dashboard.winfo_pathname(dashboard.winfo_id()))
 
 def show_notifications(notifier):
     """Display notification center"""
