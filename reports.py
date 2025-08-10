@@ -24,13 +24,14 @@ def generate_report(selected_grade="All", selected_class="All"):
                 print("CSV file is empty.")
                 return
 
-            headers = ["Student Name", "Admission No", "Class", "Stream", "Book Title", "Borrow Date", "Due Date"]
+            # Updated headers to include Book ID
+            headers = ["Book ID", "Student Name", "Admission No", "Class", "Stream", "Book Title", "Borrow Date", "Due Date"]
 
             # Filter data
             filtered_data = []
             for row in data:
-                row_grade = row[2] if len(row) > 2 else ""
-                row_class = row[2] if len(row) > 2 else ""
+                row_grade = row[3] if len(row) > 3 else ""  # Adjust index if needed
+                row_class = row[3] if len(row) > 3 else ""
                 grade_match = (selected_grade == "All") or (row_grade == selected_grade)
                 class_match = (selected_class == "All") or (row_class == selected_class)
                 if grade_match and class_match:

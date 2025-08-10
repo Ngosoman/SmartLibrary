@@ -219,12 +219,13 @@ def record_borrowing_window():
         if not selected or selected == "No book found":
             messagebox.showerror("Error", "No book selected!")
             return
-        book_id = int(selected.split(" - ")[0])
+        book_id = selected.split(" - ")[0]  # Use as string
+        book_title = selected.split(" - ")[1]
         due_date_str = due_date_entry.get_date().strftime("%Y-%m-%d")
         try:
             if db.borrow_book_by_id(student_data, book_id, due_date_str):
                 messagebox.showinfo("Success", "Book borrowed successfully!")
-                record_borrowing_to_csv(student_data, selected.split(" - ")[1], datetime.now().strftime("%Y-%m-%d"), due_date_str)
+                record_borrowing_to_csv(student_data, book_id, book_title, datetime.now().strftime("%Y-%m-%d"), due_date_str)
                 window.destroy()
         except Exception as e:
             messagebox.showerror("Error", str(e))
@@ -407,11 +408,12 @@ def check_due_alerts():
         if os.path.exists(SOUND_FILE):
             winsound.PlaySound(SOUND_FILE, winsound.SND_ASYNC)
 
-def record_borrowing_to_csv(student_data, book_title, borrow_date, due_date):
+
+def record_borrowing_to_csv(student_data, book_id, book_title, borrow_date, due_date):
     with open("borrowed_books.csv", "a", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
-        # Adjust the order to match your CSV: Name, Admission No, Class, Stream, Book Title, Borrow Date, Due Date
         writer.writerow([
+            book_id,  
             student_data['name'],
             student_data['admission'],
             student_data['class'],
