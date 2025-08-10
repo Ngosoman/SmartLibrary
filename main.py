@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox
 from dashboard import open_dashboard
-from notifications import NotificationManager
-from notifications import init_notifications
+
+from theme import configure_styles
 
 # Function to handle login
 def login():
@@ -22,6 +22,8 @@ root = tk.Tk()
 root.title("Library Login")
 root.geometry("350x250")
 root.resizable(True, True)
+# Apply theme
+configure_styles()
 
 tk.Label(root, text="Library Management Login", font=("Helvetica", 14, "bold")).pack(pady=15)
 
@@ -35,9 +37,6 @@ pass_entry.pack(pady=5)
 
 tk.Button(root, text="Login", command=login, width=15, bg="blue", fg="white").pack(pady=15)
 
-# Initialize notification system
-
- # Example usage:
 
 
 root.mainloop()
