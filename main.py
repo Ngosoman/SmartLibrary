@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox
 from dashboard import open_dashboard
+from notifications import NotificationManager
+from notifications import init_notifications
 
 # Function to handle login
 def login():
@@ -10,9 +12,10 @@ def login():
     if username == "Admin" and password == "AdminLibrary":
         messagebox.showinfo("Login Success", "Welcome to the School Library System!")
         root.destroy()
-        open_dashboard()  # Directly opens the dashboard GUI
+        open_dashboard()  
     else:
         messagebox.showerror("Login Failed", "Invalid username or password.")
+
 
 # GUI
 root = tk.Tk()
@@ -31,5 +34,10 @@ pass_entry = tk.Entry(root, show="*", width=30)
 pass_entry.pack(pady=5)
 
 tk.Button(root, text="Login", command=login, width=15, bg="blue", fg="white").pack(pady=15)
+
+# Initialize notification system
+
+ # Example usage:
+
 
 root.mainloop()

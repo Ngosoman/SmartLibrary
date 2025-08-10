@@ -10,9 +10,13 @@ def login():
         messagebox.showinfo("Success", "Login successful!")
         login_window.destroy()
         open_library_dashboard()
+
+        
     else:
         messagebox.showerror("Error", "Invalid username or password.")
 
+
+    
 # Function to simulate opening the main dashboard
 def open_library_dashboard():
     dashboard = tk.Tk()

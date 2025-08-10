@@ -5,6 +5,9 @@ import datetime
 from datetime import datetime
 import os
 from uuid import uuid4
+from notifications import notifier
+
+
 
 DB_FILE = "library.db"
 
@@ -66,6 +69,11 @@ class BookManager:
         ))
         self.conn.commit()
         return cursor.rowcount > 0
+        if updates['quantity'] < 5:  # Threshold for low stock
+         notifier.add_notification(
+            f"Low stock alert: {book_title} (only {updates['quantity']} left)",
+            urgent=True
+        )
     
     def delete_book(self, book_id):
         cursor = self.conn.cursor()
@@ -79,7 +87,7 @@ def add_book_window():
         return str(uuid4())[:8].upper()  # Short unique ID
 
     def save_book():
-        # If the user left the ID field empty, generate one
+        # Automatic ID generation if not provided
         book_id = id_entry.get().strip() or generate_book_id()
         book_data = {
             'id': book_id,
@@ -429,3 +437,13 @@ def view_books():
 def datetime_now():
     from datetime import datetime
     return datetime.now()
+
+def check_stock_levels():
+    db = BookManager()
+    low_stock = db.get_low_stock_books(threshold=3)
+    
+    for book in low_stock:
+        notifier.add_notification(
+            f"CRITICAL: Only {book.quantity} left of {book.title}",
+            urgent=True
+        )

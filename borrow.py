@@ -7,6 +7,7 @@ import winsound
 import os
 from tkcalendar import DateEntry
 import csv
+from notifications import notifier
 
 # Configuration
 DB_FILE = "library.db"
@@ -328,6 +329,15 @@ def return_book_window():
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
+        overdue_condition = db.get_upcoming_returns(days=0)
+        if overdue_condition and notifier:
+            for book_title, student_name, due_date in overdue_condition:
+                notifier.add_notification(
+                    f"{student_name} has overdue book: {book_title} (Due: {due_date})",
+                    urgent=True
+                )
+        
+
     window = tk.Toplevel()
     window.title("Return Book")
     window.geometry("300x200")
@@ -400,6 +410,12 @@ def check_due_alerts():
     overdue = db.get_upcoming_returns(days=0)  # Books due yesterday or earlier
     
     if overdue:
+        notifier.add_notification(
+            f"{student_name} has overdue book: {book_title} (Due: {due_date})",
+            urgent=True
+        )
+        winsound.PlaySound("alert_tomorrow.mp3.mp3", winsound.SND_ASYNC)
+
         notification.notify(
             title="Overdue Books",
             message=f"{len(overdue)} books are overdue!",
@@ -422,3 +438,4 @@ def record_borrowing_to_csv(student_data, book_id, book_title, borrow_date, due_
             borrow_date,
             due_date
         ])
+

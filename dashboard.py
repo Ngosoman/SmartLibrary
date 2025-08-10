@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import messagebox
-
 import books
 import borrow
 import reports
@@ -9,6 +8,8 @@ import alerts
 from reports import generate_report
 from borrow import view_upcoming_returns
 from alerts import check_due_alerts
+from notifications import NotificationManager
+from notifications import init_notifications
 
 # Run alerts check on launch
 check_due_alerts()
@@ -18,6 +19,10 @@ def open_dashboard():
     dashboard.title("SmartLibrary Dashboard")
     dashboard.geometry("500x650")
     dashboard.resizable(True, True)
+
+    # Initialize notification system and bell
+    notifier = NotificationManager(dashboard)
+    init_notifications(dashboard)
 
     tk.Label(dashboard, text="📚 SmartLibrary System", font=("Helvetica", 16, "bold")).pack(pady=20)
 
@@ -38,5 +43,5 @@ def open_dashboard():
 
     # EXIT
     tk.Button(dashboard, text="🚪 Logout", width=30, fg="white", bg="red", command=dashboard.destroy).pack(pady=25)
-
+    
     dashboard.mainloop()
