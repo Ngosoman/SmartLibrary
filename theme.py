@@ -39,7 +39,7 @@ def configure_styles():
                     font=("Segoe UI", 12, "bold"),
                     padding=8)
     style.map("Primary.TButton",
-              background=[("active", "#1a242f")])  
+              background=[("active", "#3498db")])  
     
     style.configure('Success.TButton',
                    background=secondary_color,
