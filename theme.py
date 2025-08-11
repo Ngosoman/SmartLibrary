@@ -4,6 +4,7 @@ from tkinter import ttk
 
 def configure_styles():
     style = ttk.Style()
+    style.theme_use('clam')
     
     # Main colors
     primary_color = "#3498db"  # Blue
@@ -33,8 +34,13 @@ def configure_styles():
              foreground=[('active', 'white')])
     
     style.configure('Primary.TButton',
-                   background=primary_color,
-                   foreground="white")
+                    foreground="white",
+                    background="#222f3e",   
+                    font=("Segoe UI", 12, "bold"),
+                    padding=8)
+    style.map("Primary.TButton",
+              background=[("active", "#1a242f")])  
+    
     style.configure('Success.TButton',
                    background=secondary_color,
                    foreground="white")
