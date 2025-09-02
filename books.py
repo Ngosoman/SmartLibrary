@@ -441,9 +441,14 @@ def datetime_now():
 def check_stock_levels():
     db = BookManager()
     low_stock = db.get_low_stock_books(threshold=3)
-    
+
     for book in low_stock:
-        notifier.add_notification(
-            f"CRITICAL: Only {book.quantity} left of {book.title}",
-            urgent=True
-        )
+        # book tuple: (id, title, author, category, quantity, date_added)
+        try:
+            if notifier:
+                notifier.add_notification(
+                    f"Low stock alert: {book[1]} (only {book[4]} left)",
+                    urgent=True
+                )
+        except Exception:
+            pass
