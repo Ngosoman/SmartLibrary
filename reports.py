@@ -5,11 +5,11 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from datetime import datetime, date
 from tkinter import *
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
 import webbrowser
 import csv
 
-def generate_report(selected_grade="All", selected_stream="All"):
+def generate_report(selected_grade="All", selected_stream="All", overdue_only=False):
     filename = f"BorrowedBooksReport_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     filepath = os.path.join(os.getcwd(), filename)
 
@@ -24,7 +24,7 @@ def generate_report(selected_grade="All", selected_stream="All"):
 
             headers = ["Book ID", "Student Name", "Admission No", "Class", "Stream", "Book Title", "Borrow Date", "Due Date"]
 
-            # Borrowing History Filter
+            # Borrowing History Filter (per class/stream)
             filtered_history = []
             for row in data[1:]:  # skip headers
                 grade = row[3] if len(row) > 3 else ""
@@ -54,35 +54,50 @@ def generate_report(selected_grade="All", selected_stream="All"):
             elements.append(Paragraph("📚 Borrowed Books Report", styles["Title"]))
             elements.append(Spacer(1, 12))
 
-            # Borrowing History Section
-            elements.append(Paragraph("Borrowing History", styles["Heading2"]))
-            if filtered_history:
-                history_table = Table([headers] + filtered_history, repeatRows=1)
-                history_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0,0), (-1,0), colors.grey),
-                    ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-                    ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-                    ('GRID', (0,0), (-1,-1), 0.5, colors.black),
-                ]))
-                elements.append(history_table)
+            if overdue_only:
+                # Overdue Section only
+                elements.append(Paragraph("Overdue Books", styles["Heading2"]))
+                if overdue:
+                    overdue_table = Table([headers] + overdue, repeatRows=1)
+                    overdue_table.setStyle(TableStyle([
+                        ('BACKGROUND', (0,0), (-1,0), colors.red),
+                        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+                        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+                        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+                    ]))
+                    elements.append(overdue_table)
+                else:
+                    elements.append(Paragraph("No overdue books for this filter.", styles["Normal"]))
             else:
-                elements.append(Paragraph("No borrowing records found for this filter.", styles["Normal"]))
+                # Borrowing History Section
+                elements.append(Paragraph("Borrowing History", styles["Heading2"]))
+                if filtered_history:
+                    history_table = Table([headers] + filtered_history, repeatRows=1)
+                    history_table.setStyle(TableStyle([
+                        ('BACKGROUND', (0,0), (-1,0), colors.grey),
+                        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+                        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+                        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+                    ]))
+                    elements.append(history_table)
+                else:
+                    elements.append(Paragraph("No borrowing records found for this filter.", styles["Normal"]))
 
-            elements.append(Spacer(1, 20))
+                elements.append(Spacer(1, 20))
 
-            # Overdue Section
-            elements.append(Paragraph("Overdue Books", styles["Heading2"]))
-            if overdue:
-                overdue_table = Table([headers] + overdue, repeatRows=1)
-                overdue_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0,0), (-1,0), colors.red),
-                    ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-                    ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-                    ('GRID', (0,0), (-1,-1), 0.5, colors.black),
-                ]))
-                elements.append(overdue_table)
-            else:
-                elements.append(Paragraph("No overdue books for this filter.", styles["Normal"]))
+                # Overdue Section
+                elements.append(Paragraph("Overdue Books", styles["Heading2"]))
+                if overdue:
+                    overdue_table = Table([headers] + overdue, repeatRows=1)
+                    overdue_table.setStyle(TableStyle([
+                        ('BACKGROUND', (0,0), (-1,0), colors.red),
+                        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+                        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+                        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+                    ]))
+                    elements.append(overdue_table)
+                else:
+                    elements.append(Paragraph("No overdue books for this filter.", styles["Normal"]))
 
             doc.build(elements)
             messagebox.showinfo("Success", f"Report saved as {filename}")
@@ -95,7 +110,7 @@ def generate_report(selected_grade="All", selected_stream="All"):
 def open_report_window():
     window = Tk()
     window.title("Generate Borrowed Books Report")
-    window.geometry("400x300")
+    window.geometry("450x350")
     window.configure(bg="#f2f2f2")
 
     Label(window, text="Generate Borrowed Books Report", font=("Arial", 14, "bold"), bg="#f2f2f2").pack(pady=10)
@@ -113,23 +128,43 @@ def open_report_window():
     except:
         pass
 
-    filter_frame = Frame(window, bg="#f2f2f2")
-    filter_frame.pack(pady=10)
-
-    Label(filter_frame, text="Grade:", bg="#f2f2f2").grid(row=0, column=0, padx=5)
+    # Vars
     grade_var = StringVar(value="All")
-    grade_menu = OptionMenu(filter_frame, grade_var, *sorted(grades))
-    grade_menu.grid(row=0, column=1, padx=5)
-
-    Label(filter_frame, text="Stream:", bg="#f2f2f2").grid(row=0, column=2, padx=5)
     stream_var = StringVar(value="All")
-    stream_menu = OptionMenu(filter_frame, stream_var, *sorted(streams))
-    stream_menu.grid(row=0, column=3, padx=5)
+    overdue_var = BooleanVar(value=False)
+
+    # Overdue checkbox
+    overdue_check = Checkbutton(window, text="Overdue Only", variable=overdue_var, bg="#f2f2f2")
+    overdue_check.pack(pady=10)
 
     def on_generate():
-        generate_report(grade_var.get(), stream_var.get())
+        # Ask user format
+        choice = messagebox.askquestion("Report Type", "Do you want a Specific Class Report?")
+        if choice == "yes":
+            # Popup to choose Grade + Stream
+            popup = Toplevel(window)
+            popup.title("Select Class/Stream")
+            popup.geometry("300x150")
+            Label(popup, text="Grade:").grid(row=0, column=0, padx=5, pady=5)
+            grade_menu = OptionMenu(popup, grade_var, *sorted(grades))
+            grade_menu.grid(row=0, column=1, padx=5, pady=5)
 
-    button = Button(window, text="Generate Report", command=on_generate, bg="green", fg="white", font=("Arial", 12, "bold"), padx=10, pady=5)
+            Label(popup, text="Stream:").grid(row=1, column=0, padx=5, pady=5)
+            stream_menu = OptionMenu(popup, stream_var, *sorted(streams))
+            stream_menu.grid(row=1, column=1, padx=5, pady=5)
+
+            def confirm():
+                generate_report(grade_var.get(), stream_var.get(), overdue_var.get())
+                popup.destroy()
+
+            Button(popup, text="Generate", command=confirm, bg="green", fg="white").grid(row=2, column=0, columnspan=2, pady=10)
+
+        else:
+            # General Report
+            generate_report("All", "All", overdue_var.get())
+
+    button = Button(window, text="Generate Report", command=on_generate, bg="green", fg="white",
+                    font=("Arial", 12, "bold"), padx=10, pady=5)
     button.pack(pady=20)
 
     window.mainloop()
