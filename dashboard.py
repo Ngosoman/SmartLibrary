@@ -1,7 +1,9 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import books
+from books import BookManager
 import borrow
+from borrow import LibraryDB
 import reports
 import alerts
 from notifications import NotificationManager
@@ -59,27 +61,34 @@ def open_dashboard():
                                   command=lambda: show_notifications(notifier))
     notification_btn.pack(side=tk.RIGHT, padx=5)
 
-    # Stats summary cards (static placeholders)
+    # Stats summary cards (real-time data)
     stats_frame = ttk.Frame(main_frame)
     stats_frame.pack(fill=tk.X, pady=(0, 20))
+
+    # Get real-time data
+    book_db = BookManager()
+    borrow_db = LibraryDB()
+    total_books = sum(book[4] for book in book_db.get_all_books())
+    borrowed_books_count = len(borrow_db.get_borrowed_books())
+    overdue_books_count = len(borrow_db.get_overdue_books())
 
     # Card 1: Total Books
     card1 = ttk.Frame(stats_frame, style="Card.TFrame", padding=15)
     card1.grid(row=0, column=0, padx=10, sticky="nsew")
     ttk.Label(card1, text="Total Books", style="Header2.TLabel").pack()
-    ttk.Label(card1, text="12", font=('Segoe UI', 24, 'bold')).pack()
+    ttk.Label(card1, text=str(total_books), font=('Segoe UI', 24, 'bold')).pack()
 
     # Card 2: Books Borrowed
     card2 = ttk.Frame(stats_frame, style="Card.TFrame", padding=15)
     card2.grid(row=0, column=1, padx=10, sticky="nsew")
     ttk.Label(card2, text="Books Borrowed", style="Header2.TLabel").pack()
-    ttk.Label(card2, text="8", font=('Segoe UI', 24, 'bold')).pack()
+    ttk.Label(card2, text=str(borrowed_books_count), font=('Segoe UI', 24, 'bold')).pack()
 
     # Card 3: Overdue Books
     card3 = ttk.Frame(stats_frame, style="Card.TFrame", padding=15)
     card3.grid(row=0, column=2, padx=10, sticky="nsew")
     ttk.Label(card3, text="Overdue Books", style="Header2.TLabel").pack()
-    ttk.Label(card3, text="3", font=('Segoe UI', 24, 'bold'), foreground="#e74c3c").pack()
+    ttk.Label(card3, text=str(overdue_books_count), font=('Segoe UI', 24, 'bold'), foreground="#e74c3c").pack()
 
     # Configure grid weights
     stats_frame.columnconfigure(0, weight=1)
@@ -139,7 +148,7 @@ def open_dashboard():
               style="Header2.TLabel").pack(anchor="w", pady=(0, 15))
 
     admin_buttons = [
-        ("🧾 Generate Report", reports.generate_report),
+        ("🧾 Generate Report", reports.open_report_window),
         ("🚪 Logout", dashboard.destroy)
     ]
 

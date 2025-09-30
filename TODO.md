@@ -1,0 +1,6 @@
+- [x] Import BookManager and LibraryDB in dashboard.py
+- [x] Create instances of BookManager and LibraryDB in open_dashboard
+- [x] Calculate total books count by summing quantities from get_all_books()
+- [x] Get borrowed books count from len(get_borrowed_books())
+- [x] Get overdue books count from len(get_overdue_books())
+- [x] Update the card labels with real-time data
