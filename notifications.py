@@ -15,10 +15,6 @@ class NotificationManager:
         self.setup_ui()
         
     def setup_ui(self):
-        # Notification bell button
-        self.bell_btn = ttk.Button(self.root, text="🔔",
-                                   command=self.show_notification_center)
-
         # Counter for unread notifications
         self.counter_var = tk.StringVar(value="0")
         

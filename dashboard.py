@@ -55,8 +55,12 @@ def open_dashboard():
     notification_frame = ttk.Frame(header_frame)
     notification_frame.pack(side=tk.RIGHT)
 
-    # Pack the bell button and counter from notifier
-    notifier.bell_btn.pack(side=tk.RIGHT, padx=10)
+    # Create and pack the bell button
+    bell_btn = ttk.Button(notification_frame, text="🔔 Notifications", style="Primary.TButton",
+                          command=lambda: notifier.show_notification_center())
+    bell_btn.pack(side=tk.RIGHT, padx=10)
+
+    # Pack the counter label
     ttk.Label(notification_frame, textvariable=notifier.counter_var).pack(side=tk.RIGHT)
 
     # Stats summary cards (real-time data)
