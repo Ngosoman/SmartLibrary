@@ -9,7 +9,7 @@ from tkinter import messagebox, simpledialog
 import webbrowser
 import csv
 
-def generate_report(selected_grade="All", selected_stream="All", overdue_only=False):
+def generate_report(selected_grade="All", selected_stream="All", overdue_only=False, start_date=None, end_date=None):
     filename = f"BorrowedBooksReport_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     filepath = os.path.join(os.getcwd(), filename)
 
@@ -24,7 +24,7 @@ def generate_report(selected_grade="All", selected_stream="All", overdue_only=Fa
 
             headers = ["Book ID", "Student Name", "Admission No", "Class", "Stream", "Book Title", "Borrow Date", "Due Date"]
 
-            # Borrowing History Filter (per class/stream)
+            # Borrowing History Filter (per class/stream and period)
             filtered_history = []
             for row in data[1:]:  # skip headers
                 grade = row[3] if len(row) > 3 else ""
@@ -32,6 +32,13 @@ def generate_report(selected_grade="All", selected_stream="All", overdue_only=Fa
                 grade_match = (selected_grade == "All") or (grade == selected_grade)
                 stream_match = (selected_stream == "All") or (stream == selected_stream)
                 if grade_match and stream_match:
+                    if start_date and end_date:
+                        try:
+                            borrow_date = datetime.strptime(row[6], "%Y-%m-%d").date()
+                            if not (start_date <= borrow_date <= end_date):
+                                continue
+                        except:
+                            continue
                     filtered_history.append(row)
 
             # Overdue Filter
@@ -137,11 +144,17 @@ def open_report_window():
     overdue_check = Checkbutton(window, text="Overdue Only", variable=overdue_var, bg="#f2f2f2")
     overdue_check.pack(pady=10)
 
+    # Report type radio buttons
+    report_type = StringVar(value="full")
+    Radiobutton(window, text="Full Report", variable=report_type, value="full", bg="#f2f2f2").pack(anchor=W)
+    Radiobutton(window, text="Filter by Class/Stream", variable=report_type, value="class_stream", bg="#f2f2f2").pack(anchor=W)
+    Radiobutton(window, text="Filter by Period", variable=report_type, value="period", bg="#f2f2f2").pack(anchor=W)
+
     def on_generate():
-        # Ask user format
-        choice = messagebox.askquestion("Report Type", "Do you want a Specific Class Report?")
-        if choice == "yes":
-            # Popup to choose Grade + Stream
+        rt = report_type.get()
+        if rt == "full":
+            generate_report("All", "All", overdue_var.get())
+        elif rt == "class_stream":
             popup = Toplevel(window)
             popup.title("Select Class/Stream")
             popup.geometry("300x150")
@@ -158,10 +171,27 @@ def open_report_window():
                 popup.destroy()
 
             Button(popup, text="Generate", command=confirm, bg="green", fg="white").grid(row=2, column=0, columnspan=2, pady=10)
+        elif rt == "period":
+            popup = Toplevel(window)
+            popup.title("Select Period")
+            popup.geometry("300x200")
+            Label(popup, text="Start Date (YYYY-MM-DD):").grid(row=0, column=0, padx=5, pady=5)
+            start_entry = Entry(popup)
+            start_entry.grid(row=0, column=1, padx=5, pady=5)
+            Label(popup, text="End Date (YYYY-MM-DD):").grid(row=1, column=0, padx=5, pady=5)
+            end_entry = Entry(popup)
+            end_entry.grid(row=1, column=1, padx=5, pady=5)
 
-        else:
-            # General Report
-            generate_report("All", "All", overdue_var.get())
+            def confirm():
+                try:
+                    start = datetime.strptime(start_entry.get(), "%Y-%m-%d").date() if start_entry.get() else None
+                    end = datetime.strptime(end_entry.get(), "%Y-%m-%d").date() if end_entry.get() else None
+                    generate_report("All", "All", overdue_var.get(), start, end)
+                    popup.destroy()
+                except ValueError:
+                    messagebox.showerror("Error", "Invalid date format. Use YYYY-MM-DD.")
+
+            Button(popup, text="Generate", command=confirm, bg="green", fg="white").grid(row=2, column=0, columnspan=2, pady=10)
 
     button = Button(window, text="Generate Report", command=on_generate, bg="green", fg="white",
                     font=("Arial", 12, "bold"), padx=10, pady=5)
