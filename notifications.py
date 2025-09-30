@@ -16,13 +16,11 @@ class NotificationManager:
         
     def setup_ui(self):
         # Notification bell button
-        self.bell_btn = ttk.Button(self.root, text="🔔", 
+        self.bell_btn = ttk.Button(self.root, text="🔔",
                                    command=self.show_notification_center)
-        self.bell_btn.pack(side=tk.RIGHT, padx=10)
-        
+
         # Counter for unread notifications
         self.counter_var = tk.StringVar(value="0")
-        ttk.Label(self.root, textvariable=self.counter_var).pack(side=tk.RIGHT)
         
     def add_notification(self, category, message, urgent=False):
         """Add a notification under a category"""

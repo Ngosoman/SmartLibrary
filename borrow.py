@@ -431,6 +431,7 @@ def check_due_alerts():
                 for book_title, student_name, due_date in overdue:
                     try:
                         notifier.add_notification(
+                            "Overdue Books",
                             f"{student_name} has overdue book: {book_title} (Due: {due_date})",
                             urgent=True
                         )

@@ -57,7 +57,7 @@ class BookManager:
     def update_book(self, book_id, updates):
         cursor = self.conn.cursor()
         cursor.execute("""
-        UPDATE books 
+        UPDATE books
         SET title=?, author=?, category=?, quantity=?
         WHERE id=?
         """, (
@@ -68,12 +68,18 @@ class BookManager:
             book_id
         ))
         self.conn.commit()
-        return cursor.rowcount > 0
-        if updates['quantity'] < 5:  # Threshold for low stock
-         notifier.add_notification(
-            f"Low stock alert: {book_title} (only {updates['quantity']} left)",
-            urgent=True
-        )
+        success = cursor.rowcount > 0
+        if success and updates['quantity'] <= 2:  # Threshold for low stock
+            try:
+                if notifier:
+                    notifier.add_notification(
+                        "Low Stock",
+                        f"Low stock alert: {updates['title']} (only {updates['quantity']} left)",
+                        urgent=True
+                    )
+            except Exception:
+                pass
+        return success
     
     def delete_book(self, book_id):
         cursor = self.conn.cursor()
@@ -447,6 +453,7 @@ def check_stock_levels():
         try:
             if notifier:
                 notifier.add_notification(
+                    "Low Stock",
                     f"Low stock alert: {book[1]} (only {book[4]} left)",
                     urgent=True
                 )
