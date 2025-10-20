@@ -43,12 +43,46 @@ def open_dashboard():
     main_container.pack(fill=tk.BOTH, expand=True)
 
     # Sidebar
-    sidebar = ttk.Frame(main_container, width=250, style="Card.TFrame")
+    sidebar_expanded = tk.BooleanVar(value=True)
+    sidebar_width = 250
+
+    def toggle_sidebar():
+        if sidebar_expanded.get():
+            # Collapse
+            sidebar.config(width=60)
+            sidebar_expanded.set(False)
+            collapse_btn.config(text="▶")
+            # Hide text, show icons
+            menu_label.pack_forget()
+            dark_mode_btn.config(text="🌙")
+            notification_label.pack_forget()
+            bell_btn.config(text="🔔")
+            recent_label.pack_forget()
+            preview_frame.pack_forget()
+        else:
+            # Expand
+            sidebar.config(width=250)
+            sidebar_expanded.set(True)
+            collapse_btn.config(text="◀")
+            # Show text, hide icons
+            menu_label.pack(pady=(20, 10))
+            dark_mode_btn.config(text="🌙 Dark Mode")
+            notification_label.pack(pady=(20, 10))
+            bell_btn.config(text="🔔 Notifications")
+            recent_label.pack(pady=(10, 5))
+            preview_frame.pack(fill=tk.X, padx=20, pady=(0, 10))
+
+    sidebar = ttk.Frame(main_container, width=sidebar_width, style="Card.TFrame")
     sidebar.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 10), pady=10)
     sidebar.pack_propagate(False)
 
+    # Collapse button at top
+    collapse_btn = ttk.Button(sidebar, text="◀", command=toggle_sidebar, width=2)
+    collapse_btn.pack(anchor="ne", padx=5, pady=5)
+
     # Sidebar title
-    ttk.Label(sidebar, text="Menu", style="Header2.TLabel", font=("Segoe UI", 14, "bold")).pack(pady=(20, 10))
+    menu_label = ttk.Label(sidebar, text="Menu", style="Header2.TLabel", font=("Segoe UI", 14, "bold"))
+    menu_label.pack(pady=(20, 10))
 
     # Dark mode toggle
     def toggle_dark_mode():
@@ -60,7 +94,8 @@ def open_dashboard():
     dark_mode_btn.pack(fill=tk.X, padx=20, pady=5)
 
     # Notifications in sidebar
-    ttk.Label(sidebar, text="Notifications", style="Header2.TLabel").pack(pady=(20, 10))
+    notification_label = ttk.Label(sidebar, text="Notifications", style="Header2.TLabel")
+    notification_label.pack(pady=(20, 10))
 
     # Notification bell with counter
     notification_frame = ttk.Frame(sidebar)
@@ -72,7 +107,27 @@ def open_dashboard():
     bell_btn.pack(side=tk.TOP, fill=tk.X, pady=(0, 5))
 
     # Pack the counter label
-    ttk.Label(notification_frame, textvariable=notifier.counter_var, font=("Segoe UI", 12, "bold")).pack(side=tk.TOP)
+    counter_label = ttk.Label(notification_frame, textvariable=notifier.counter_var, font=("Segoe UI", 12, "bold"))
+    counter_label.pack(side=tk.TOP)
+
+    # Add a small preview of recent notifications
+    recent_label = ttk.Label(sidebar, text="Recent Alerts", style="Header2.TLabel", font=("Segoe UI", 10))
+    recent_label.pack(pady=(10, 5))
+
+    preview_frame = ttk.Frame(sidebar)
+    preview_frame.pack(fill=tk.X, padx=20, pady=(0, 10))
+
+    # Show up to 3 recent notifications
+    recent_notifications = []
+    for category, notes in notifier.notifications.items():
+        for i, note in enumerate(notes[-3:]):  # Last 3
+            recent_notifications.append((category, note, i))
+
+    for category, note, idx in recent_notifications[-3:]:
+        is_read = idx in notifier.read_status[category]
+        status_icon = "✓" if is_read else "●"
+        preview_text = f"{status_icon} {note[1][:30]}..." if len(note[1]) > 30 else f"{status_icon} {note[1]}"
+        ttk.Label(preview_frame, text=preview_text, font=("Segoe UI", 9), foreground="#7f8c8d").pack(anchor="w", pady=1)
 
     # Main content area
     content_frame = ttk.Frame(main_container, padding=20)

@@ -12,8 +12,13 @@ class NotificationManager:
             "Low Stock": [],
             "System Reminders": []
         }
+        self.read_status = {
+            "Overdue Books": set(),
+            "Low Stock": set(),
+            "System Reminders": set()
+        }
         self.setup_ui()
-        
+
     def setup_ui(self):
         # Counter for unread notifications
         self.counter_var = tk.StringVar(value="0")
@@ -46,30 +51,48 @@ class NotificationManager:
         window = tk.Toplevel(self.root)
         window.title("Notification Center")
         window.geometry("700x500")
-        
+
         notebook = ttk.Notebook(window)
         notebook.pack(fill="both", expand=True)
-        
+
         # Create tabs for each category
         for category, notes in self.notifications.items():
             frame = ttk.Frame(notebook)
-            notebook.add(frame, text=category)
-            
-            tree = ttk.Treeview(frame, columns=("Time", "Message", "Urgent"), show="headings")
+            notebook.add(frame, text=f"{category} ({len(notes)})")
+
+            tree = ttk.Treeview(frame, columns=("Time", "Message", "Status"), show="headings")
             tree.heading("Time", text="Time")
             tree.heading("Message", text="Message")
-            tree.heading("Urgent", text="Urgent")
+            tree.heading("Status", text="Status")
             tree.column("Time", width=80)
             tree.column("Message", width=450)
-            tree.column("Urgent", width=80)
-            
-            for note in notes:
-                tree.insert("", tk.END, values=(note[0], note[1], "⚠️" if note[2] else ""))
-            
+            tree.column("Status", width=80)
+
+            for i, note in enumerate(notes):
+                is_read = i in self.read_status[category]
+                status = "Read" if is_read else "Unread"
+                tree.insert("", tk.END, values=(note[0], note[1], status))
+
+                # Mark as read when clicked
+                def mark_read(event, cat=category, idx=i):
+                    self.read_status[cat].add(idx)
+                    self.update_counter()
+                    # Refresh the treeview
+                    tree.item(tree.selection()[0], values=(note[0], note[1], "Read"))
+
+                tree.bind("<ButtonRelease-1>", mark_read)
+
             scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
             tree.configure(yscrollcommand=scrollbar.set)
             scrollbar.pack(side="right", fill="y")
             tree.pack(fill="both", expand=True)
+
+    def update_counter(self):
+        """Update the unread counter"""
+        unread_count = 0
+        for category, notes in self.notifications.items():
+            unread_count += len(notes) - len(self.read_status[category])
+        self.counter_var.set(str(unread_count))
 
 
 # Global notifier instance
