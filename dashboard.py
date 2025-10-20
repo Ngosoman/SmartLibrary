@@ -9,7 +9,7 @@ import alerts
 from notifications import NotificationManager
 from notifications import init_notifications
 from datetime import datetime
-from theme import configure_styles
+from theme import configure_styles, toggle_theme
 
 # Run alerts check on launch (legacy alerts module, leaves as-is)
 alerts.check_due_alerts()
@@ -21,7 +21,7 @@ def open_dashboard():
     # Create main dashboard window
     dashboard = tk.Toplevel()
     dashboard.title("📚 SmartLibrary Dashboard")
-    dashboard.geometry("1200x800")
+    dashboard.geometry("1400x800")
     dashboard.resizable(True, True)
 
     # Initialize notification manager (sets the global `notifier` inside notifications.py)
@@ -38,12 +38,48 @@ def open_dashboard():
     except Exception:
         pass
 
-    # Main container with padding
-    main_frame = ttk.Frame(dashboard, padding=20)
-    main_frame.pack(fill=tk.BOTH, expand=True)
+    # Main container with sidebar and content
+    main_container = ttk.Frame(dashboard)
+    main_container.pack(fill=tk.BOTH, expand=True)
+
+    # Sidebar
+    sidebar = ttk.Frame(main_container, width=250, style="Card.TFrame")
+    sidebar.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 10), pady=10)
+    sidebar.pack_propagate(False)
+
+    # Sidebar title
+    ttk.Label(sidebar, text="Menu", style="Header2.TLabel", font=("Segoe UI", 14, "bold")).pack(pady=(20, 10))
+
+    # Dark mode toggle
+    def toggle_dark_mode():
+        new_theme = toggle_theme()
+        # Refresh the dashboard styles
+        dashboard.update_idletasks()
+
+    dark_mode_btn = ttk.Button(sidebar, text="🌙 Dark Mode", style="TButton", command=toggle_dark_mode)
+    dark_mode_btn.pack(fill=tk.X, padx=20, pady=5)
+
+    # Notifications in sidebar
+    ttk.Label(sidebar, text="Notifications", style="Header2.TLabel").pack(pady=(20, 10))
+
+    # Notification bell with counter
+    notification_frame = ttk.Frame(sidebar)
+    notification_frame.pack(fill=tk.X, padx=20, pady=5)
+
+    # Create and pack the bell button
+    bell_btn = ttk.Button(notification_frame, text="🔔 Notifications", style="Primary.TButton",
+                          command=lambda: notifier.show_notification_center())
+    bell_btn.pack(side=tk.TOP, fill=tk.X, pady=(0, 5))
+
+    # Pack the counter label
+    ttk.Label(notification_frame, textvariable=notifier.counter_var, font=("Segoe UI", 12, "bold")).pack(side=tk.TOP)
+
+    # Main content area
+    content_frame = ttk.Frame(main_container, padding=20)
+    content_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
     # Header section
-    header_frame = ttk.Frame(main_frame)
+    header_frame = ttk.Frame(content_frame)
     header_frame.pack(fill=tk.X, pady=(0, 20))
 
     # Dashboard title
@@ -51,20 +87,8 @@ def open_dashboard():
               text="SmartLibrary System",
               style="Header1.TLabel").pack(side=tk.LEFT)
 
-    # Notification bell with counter
-    notification_frame = ttk.Frame(header_frame)
-    notification_frame.pack(side=tk.RIGHT)
-
-    # Create and pack the bell button
-    bell_btn = ttk.Button(notification_frame, text="🔔 Notifications", style="Primary.TButton",
-                          command=lambda: notifier.show_notification_center())
-    bell_btn.pack(side=tk.RIGHT, padx=10)
-
-    # Pack the counter label
-    ttk.Label(notification_frame, textvariable=notifier.counter_var).pack(side=tk.RIGHT)
-
     # Stats summary cards (real-time data)
-    stats_frame = ttk.Frame(main_frame)
+    stats_frame = ttk.Frame(content_frame)
     stats_frame.pack(fill=tk.X, pady=(0, 20))
 
     # Get real-time data
@@ -98,7 +122,7 @@ def open_dashboard():
     stats_frame.columnconfigure(2, weight=1)
 
     # Main action panels
-    panel_frame = ttk.Frame(main_frame)
+    panel_frame = ttk.Frame(content_frame)
     panel_frame.pack(fill=tk.BOTH, expand=True)
 
     # Left panel - Book Management
@@ -167,7 +191,7 @@ def open_dashboard():
     panel_frame.columnconfigure(2, weight=1)
 
     # Status bar
-    status_frame = ttk.Frame(main_frame, style="Card.TFrame", padding=10)
+    status_frame = ttk.Frame(content_frame, style="Card.TFrame", padding=10)
     status_frame.pack(fill=tk.X, pady=(10, 0))
 
     ttk.Label(status_frame,

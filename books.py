@@ -87,6 +87,11 @@ class BookManager:
         self.conn.commit()
         return cursor.rowcount > 0
 
+    def get_low_stock_books(self, threshold=3):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM books WHERE quantity <= ?", (threshold,))
+        return cursor.fetchall()
+
 # ------------------- Add Book Window -------------------
 def add_book_window():
     def generate_book_id():
