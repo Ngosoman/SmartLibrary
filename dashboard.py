@@ -117,6 +117,9 @@ def open_dashboard():
     preview_frame = ttk.Frame(sidebar)
     preview_frame.pack(fill=tk.X, padx=20, pady=(0, 10))
 
+    # Set the preview frame reference for real-time updates
+    notifier.preview_frame = preview_frame
+
     # Show up to 3 recent notifications
     recent_notifications = []
     for category, notes in notifier.notifications.items():

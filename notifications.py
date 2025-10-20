@@ -17,6 +17,7 @@ class NotificationManager:
             "Low Stock": set(),
             "System Reminders": set()
         }
+        self.preview_frame = None  # Will be set by dashboard
         self.setup_ui()
 
     def setup_ui(self):
@@ -26,26 +27,28 @@ class NotificationManager:
     def add_notification(self, category, message, urgent=False):
         """Add a notification under a category"""
         timestamp = datetime.now().strftime("%H:%M")
-        
+
         if category not in self.notifications:
             self.notifications[category] = []
-        
+
         self.notifications[category].append((timestamp, message, urgent))
-        
+
         # Update counter
-        total_count = sum(len(v) for v in self.notifications.values())
-        self.counter_var.set(str(total_count))
-        
+        self.update_counter()
+
         # System tray notification
         notification.notify(
             title=f"Library Alert - {category}",
             message=message,
             timeout=10
         )
-        
+
         # Urgent sound alert
         if urgent:
             winsound.PlaySound("alert_today.mp3", winsound.SND_ASYNC)
+
+        # Update sidebar preview if available
+        self.update_sidebar_preview()
     
     def show_notification_center(self):
         window = tk.Toplevel(self.root)
@@ -93,6 +96,27 @@ class NotificationManager:
         for category, notes in self.notifications.items():
             unread_count += len(notes) - len(self.read_status[category])
         self.counter_var.set(str(unread_count))
+
+    def update_sidebar_preview(self):
+        """Update the sidebar notification preview"""
+        if self.preview_frame is None:
+            return
+
+        # Clear existing preview
+        for widget in self.preview_frame.winfo_children():
+            widget.destroy()
+
+        # Show up to 3 recent notifications
+        recent_notifications = []
+        for category, notes in self.notifications.items():
+            for i, note in enumerate(notes[-3:]):  # Last 3
+                recent_notifications.append((category, note, i))
+
+        for category, note, idx in recent_notifications[-3:]:
+            is_read = idx in self.read_status[category]
+            status_icon = "✓" if is_read else "●"
+            preview_text = f"{status_icon} {note[1][:30]}..." if len(note[1]) > 30 else f"{status_icon} {note[1]}"
+            ttk.Label(self.preview_frame, text=preview_text, font=("Segoe UI", 9), foreground="#7f8c8d").pack(anchor="w", pady=1)
 
 
 # Global notifier instance

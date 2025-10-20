@@ -7,7 +7,7 @@ import winsound
 import os
 from tkcalendar import DateEntry
 import csv
-from notifications import notifier
+import notifications
 
 # Configuration
 DB_FILE = "library.db"
@@ -111,8 +111,9 @@ class LibraryDB:
 
         # Low stock notification after borrow (threshold <= 2)
         try:
-            if new_qty <= 2 and notifier:
-                notifier.add_notification(
+            if new_qty <= 2 and notifications.notifier:
+                notifications.notifier.add_notification(
+                    "Low Stock",
                     f"Low stock alert: {title} (only {new_qty} left)",
                     urgent=True
                 )
@@ -344,9 +345,10 @@ def return_book_window():
         # Optional: re-check overdues to notify (non-blocking)
         try:
             overdue_list = db.get_overdue_books()
-            if overdue_list and notifier:
+            if overdue_list and notifications.notifier:
                 for book_title, student_name, due_date in overdue_list:
-                    notifier.add_notification(
+                    notifications.notifier.add_notification(
+                        "Overdue Books",
                         f"{student_name} has overdue book: {book_title} (Due: {due_date})",
                         urgent=True
                     )
@@ -427,10 +429,10 @@ def check_due_alerts():
 
         if overdue:
             # In-app bell notifications (one per overdue)
-            if notifier:
+            if notifications.notifier:
                 for book_title, student_name, due_date in overdue:
                     try:
-                        notifier.add_notification(
+                        notifications.notifier.add_notification(
                             "Overdue Books",
                             f"{student_name} has overdue book: {book_title} (Due: {due_date})",
                             urgent=True
