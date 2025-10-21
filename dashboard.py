@@ -14,12 +14,12 @@ from theme import configure_styles, toggle_theme
 # Run alerts check on launch (legacy alerts module, leaves as-is)
 alerts.check_due_alerts()
 
-def open_dashboard():
+def open_dashboard(root):
     # Configure styles
     configure_styles()
 
-    # Create main dashboard window
-    dashboard = tk.Toplevel()
+    # Create main dashboard window as Toplevel
+    dashboard = tk.Toplevel(root)
     dashboard.title("📚 SmartLibrary Dashboard")
     dashboard.geometry("1400x800")
     dashboard.resizable(True, True)

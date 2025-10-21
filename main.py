@@ -10,8 +10,8 @@ def login():
 
     if username == "Admin" and password == "AdminLibrary":
         messagebox.showinfo("Login Success", "Welcome to the School Library System!")
-        root.destroy()
-        open_dashboard()
+        root.withdraw()
+        open_dashboard(root)
     else:
         messagebox.showerror("Login Failed", "Invalid username or password.")
 
