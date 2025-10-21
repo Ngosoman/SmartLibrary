@@ -63,32 +63,38 @@ class NotificationManager:
             frame = ttk.Frame(notebook)
             notebook.add(frame, text=f"{category} ({len(notes)})")
 
-            tree = ttk.Treeview(frame, columns=("Time", "Message", "Status"), show="headings")
+            tree = ttk.Treeview(frame, columns=("Time", "Message", "Status", "idx"), show="headings")
             tree.heading("Time", text="Time")
             tree.heading("Message", text="Message")
             tree.heading("Status", text="Status")
+            tree.heading("idx", text="")
             tree.column("Time", width=80)
             tree.column("Message", width=450)
             tree.column("Status", width=80)
+            tree.column("idx", width=0, stretch=False)  # Hidden column for index
 
             for i, note in enumerate(notes):
                 is_read = i in self.read_status[category]
                 status = "Read" if is_read else "Unread"
-                tree.insert("", tk.END, values=(note[0], note[1], status))
+                tree.insert("", tk.END, values=(note[0], note[1], status, i))
 
-                # Mark as read when clicked
-                def mark_read(event, cat=category, idx=i):
-                    self.read_status[cat].add(idx)
-                    self.update_counter()
-                    # Refresh the treeview
-                    tree.item(tree.selection()[0], values=(note[0], note[1], "Read"))
-
-                tree.bind("<ButtonRelease-1>", mark_read)
+            tree.bind("<ButtonRelease-1>", lambda e, cat=category: self.mark_read(e, cat))
 
             scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
             tree.configure(yscrollcommand=scrollbar.set)
             scrollbar.pack(side="right", fill="y")
             tree.pack(fill="both", expand=True)
+
+    def mark_read(self, event, category):
+        selected = event.widget.selection()
+        if selected:
+            item = selected[0]
+            idx = int(event.widget.item(item, "values")[3])
+            self.read_status[category].add(idx)
+            self.update_counter()
+            # Refresh the treeview
+            note = self.notifications[category][idx]
+            event.widget.item(item, values=(note[0], note[1], "Read", idx))
 
     def update_counter(self):
         """Update the unread counter"""
